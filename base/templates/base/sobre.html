@@ -1,0 +1,186 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sobre o Projeto - CISEB</title>
+    <!-- Bootstrap 5 CSS e Ícones -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <style>
+        /* Estilização dos Containers de Foto Redonda com Borda Azul e Ícone Flutuante */
+        .avatar-container {
+            position: relative;
+            display: inline-block;
+            width: 200px;
+            height: 200px;
+            top: -70px;
+        }
+
+        .avatar-img {
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 4px solid #0d6efd; /* Borda Azul do Bootstrap (Primary) */
+            box-shadow: 0 4px 10px rgba(13, 110, 253, 0.2);
+        }
+
+        .avatar-badge {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ffffff;
+            font-size: 1.1rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+
+        .hover-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .hover-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        }
+    </style>
+</head>
+<body class="bg-light min-vh-100 d-flex flex-column justify-content-between">
+
+    <!-- Navegação -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm mb-4">
+        <div class="container">
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+                <img src="{% static 'img/logo_t.png' %}" alt="Logo" height="80" class="me-2" style="object-fit: contain;">
+                <span class="fs-5">Palavreando & CISEB</span>
+            </a>
+            <div class="d-flex">
+                <a href="{% url 'base:home' %}" class="btn btn-outline-light btn-sm rounded-pill px-3">
+                    <i class="bi bi-arrow-left me-1"></i> Voltar ao Início
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Conteúdo Principal -->
+    <main class="container my-auto py-3">
+        
+        <!-- Cabeçalho da Página -->
+        <div class="text-center mb-5">
+            <h2 class="fw-bold text-primary">Conheça o Nosso Projeto</h2>
+            <p class="text-muted fs-5">Tecnologia, Inovação e Educação a serviço da leitura e do desenvolvimento.</p>
+            <div class="mx-auto bg-primary rounded" style="width: 60px; height: 4px;"></div>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            
+            <!-- Card 1: Sobre o CISEB -->
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm hover-card">
+                    <div class="card-body text-center p-4">
+                        
+                        <!-- Avatar com Foto + Borda Azul + Ícone -->
+                        <div class="avatar-container mb-3">
+                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" class="text-decoration-none">
+                                <img src="{% static 'img/ciseb.png' %}" alt="Logo CISEB" class="avatar-img">
+                            </a>
+                            <div class="avatar-badge bg-primary text-white">
+                                <i class="bi bi-building-gear"></i>
+                            </div>
+                        </div>
+
+                        <h4 class="card-title fw-bold text-dark mb-1"><a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" class="text-decoration-none">CISEB</a></h4>
+                        <span class="badge bg-primary mb-3">Instituição / Contexto</span>
+                        <p class="card-text text-muted">
+                            O <strong>CISEB</strong> é o espaço voltado para a inovação, desenvolvimento de tecnologias educacionais e formação. O projeto de leitura interativa por voz nasce como uma solução para impulsionar o aprendizado e o monitoramento de desempenho dos estudantes.
+                        </p>
+                    </div>
+                    <div class="card-footer bg-transparent border-0 text-center pb-4">
+                        <span class="small text-muted"><i class="bi bi-check-circle-fill text-success me-1"></i> <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" class="text-decoration-none">Inovação Educacional</a></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Carlos Brito -->
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm hover-card">
+                    <div class="card-body text-center p-4">
+                        
+                        <!-- Avatar com Foto + Borda Azul + Ícone -->
+                        <div class="avatar-container mb-3">                            
+                            <img src="{% static 'img/carlos.png' %}" alt="Carlos Brito" class="avatar-img">
+                            <div class="avatar-badge bg-success text-white">
+                                <i class="bi bi-code-slash"></i>
+                            </div>
+                        </div>
+
+                        <h4 class="card-title fw-bold text-dark mb-1">Carlos Brito</h4>
+                        <span class="badge bg-success mb-3">Desenvolvedor & Criador</span>
+                        <p class="card-text text-muted">
+                            Professor e desenvolvedor encarregado da arquitetura do sistema, engenharia do banco de dados e implementação das lógicas de reconhecimento de voz e algoritmos de acompanhamento pedagógico.
+                        </p>
+                    </div>
+                    <div class="card-footer bg-transparent border-0 text-center pb-4">
+                        <a href=" https://lattes.cnpq.br/3167381293602948" target="_blank" class="text-decoration-none"><i class="bi bi-file-earmark-text me-1"></i> Lattes</a>
+                        <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none"><i class="bi bi-linkedin me-1"></i> Linkedin</a>
+                        <a href="https://www.instagram.com/dev_n_art?stkn=aG9wNmlsZ2t1YTZw" target="_blank" class="text-decoration-none"><i class="bi bi-instagram me-1"></i> Instagram</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: Alessandra Jastes -->
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm hover-card">
+                    <div class="card-body text-center p-4">
+                        
+                        <!-- Avatar com Foto + Borda Azul + Ícone -->
+                        <div class="avatar-container mb-3">
+                            <img src="{% static 'img/alessandra.png' %}" alt="Alessandra Jastes" class="avatar-img">
+                            <div class="avatar-badge bg-warning text-dark">
+                                <i class="bi bi-journal-bookmark-fill"></i>
+                            </div>
+                        </div>
+
+                        <h4 class="card-title fw-bold text-dark mb-1">Alessandra Jastes</h4>
+                        <span class="badge bg-warning text-dark mb-3">Coautora & Colaboradora</span>
+                        <p class="card-text text-muted">
+                            Educadora e pesquisadora atuante no projeto, responsável pela curadoria pedagógica, validação das dinâmicas de leitura e apoio no alinhamento das metodologias aplicadas em sala de aula.
+                        </p>
+                    </div>
+                    <div class="card-footer bg-transparent border-0 text-center pb-4">
+                        <a href=" https://lattes.cnpq.br/" target="_blank" class="text-decoration-none"><i class="bi bi-file-earmark-text me-1"></i> Lattes</a>
+                        <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none"><i class="bi bi-linkedin me-1"></i> Linkedin</a>
+                        <a href="https://www.instagram.com/teacher_alejastes?stkn=MXVsbWxpMmFmeGozMQ%3D%3D&utm_source=qr" target="_blank" class="text-decoration-none"><i class="bi bi-instagram me-1"></i> Instagram</a>
+                    
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Rodapé -->
+    <footer class="bg-white border-top py-3 mt-5">
+        <div class="container text-center text-muted small">
+            <p class="mb-0">© 2026 Sistema de Leitura Interativa por Voz — CISEBAM.</p>
+            <p class="mb-0">Desenvolvido por <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none">Carlos Brito</a> e <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none">Alessandra Jastes</a>.</p>
+            <p class="mb-0">Todos os direitos reservados.</p>
+            <div class="mb-0 app-version">
+                Versão {{ versao_app }}
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seleção de Modos - Palavreando</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <style>
+        /* Estilização dos Containers de Foto Redonda com Borda Azul e Ícone Flutuante */
+        .avatar-container {
+            position: relative;
+            display: inline-block;
+            width: 200px;
+            height: 200px;
+            top: -20px;
+        }
+
+        .avatar-img {
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 4px solid #0d6efd; /* Borda Azul do Bootstrap (Primary) */
+            box-shadow: 0 4px 10px rgba(13, 110, 253, 0.2);
+        }
+
+        .avatar-badge {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ffffff;
+            font-size: 1.1rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+        .hover-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .hover-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important;
+        }
+        .linha {
+            width: 100%;
+            border: 0;
+            border-top: 2px solid #000;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="bg-light min-vh-100 d-flex flex-column justify-content-between">
+
+    <div class="container py-5">
+        <!-- Cabeçalho de Boas-Vindas com Nome do Aluno -->
+        <div class="text-center mb-5">
+            <h1 class="fw-bold text-primary display-5">
+                Olá, {% if aluno %}{{ aluno.nome_completo }}{% elif aluno_ativo %}{{ aluno_ativo.nome_completo }}{% else %}Aluno(a){% endif %}! 👋
+            </h1>
+            <p class="text-muted fs-5">Escolha o modo de jogo que você deseja praticar hoje:</p>
+            <div class="mx-auto bg-primary rounded" style="width: 60px; height: 4px;"></div>
+        </div>
+
+        <!-- Grid de Cards de Modos de Jogo -->
+        <div class="row g-4 justify-content-center">
+            
+            <!-- CARD 1: Modo 60 Segundos -->
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm hover-card text-center p-3">
+                    <div class="card-body d-flex flex-column align-items-center">
+                        <div class="avatar-container mb-3">
+                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" class="text-decoration-none">
+                                <img src="{% static 'img/modo_60s.png' %}" alt="Modo 60s" class="avatar-img">
+                            </a>
+                            <div class="avatar-badge bg-primary text-white">
+                                <i class="bi bi-stopwatch-fill"></i>
+                            </div>
+                        </div>
+                        <h3 class="fw-bold text-dark">Modo 60s</h3>
+                        <span class="badge bg-primary mb-3">Desafio Individual</span>
+                        <p class="text-muted flex-grow-1">
+                            Leia o máximo de palavras que conseguir antes que o cronômetro de 1 minuto termine!
+                        </p>
+                        <a href="{% url 'palavra:exibir_palavras' %}?aluno_id={% if aluno %}{{ aluno.id }}{% else %}{{ request.GET.aluno_id }}{% endif %}&modo=60s" class="btn btn-primary btn-lg rounded-pill w-100 fw-bold">
+                            <i class="bi bi-play-fill me-1"></i> Jogar 60s
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARD 2: Modo Batalha (Vs) -->
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm hover-card text-center p-3">
+                    <div class="card-body d-flex flex-column align-items-center">
+                        <div class="avatar-container mb-3">
+                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" class="text-decoration-none">
+                                <img src="{% static 'img/modo_vs.png' %}" alt="Modo Batalha" class="avatar-img">
+                            </a>
+                            <div class="avatar-badge bg-danger text-white">
+                                <i class="bi bi-controller"></i>
+                            </div>
+                        </div>
+                        <h3 class="fw-bold text-dark">Modo Batalha (Vs)</h3>
+                        <span class="badge bg-danger mb-3">Multijogador em Tempo Real</span>
+                        <p class="text-muted flex-grow-1">
+                            Desafie outro colega online aleatório em um duelo de leitura! Quem falar mais palavras vence.
+                        </p>
+                        <a href="/palavra/batalha/?aluno_id={% if aluno %}{{ aluno.id }}{% else %}{{ request.GET.aluno_id }}{% endif %}" class="btn btn-danger btn-lg rounded-pill w-100 fw-bold">
+                            <i class="bi bi-lightning-charge-fill me-1"></i> Entrar na Arena
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARD 3: Selecione o Nível (Modificado) -->
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm hover-card text-center p-3">
+                    <div class="card-body d-flex flex-column align-items-center">
+                        <div class="avatar-container mb-3">
+                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" class="text-decoration-none">
+                                <img src="{% static 'img/modo_up.png' %}" alt="Selecione o Nível" class="avatar-img">
+                            </a>
+                            <div class="avatar-badge bg-primary text-white">
+                                <i class="bi bi-sliders"></i>
+                            </div>
+                        </div>
+                        <h3 class="fw-bold text-dark">Selecione o Nível</h3>
+                        <span class="badge bg-warning text-dark mb-3">Definido pelo Professor</span>
+                        <p class="text-muted flex-grow-1">
+                            Pratique com grupos de palavras configurados pelo professor de acordo com o seu nível de leitura.
+                        </p>
+                        <!-- Botão "Escolher Nível" no Card -->
+                        <button type="button" class="btn btn-warning btn-lg text-dark rounded-pill w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#modalEscolherNivel">
+                            <i class="bi bi-sliders me-1"></i> Escolher Nível
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <hr class="linha">
+        <br><br>
+        <div class="botao"><a href="{% url 'autentica:dashboard' %}" class="btn btn-warning">Voltar ao Início</a></div><br>
+    </div>
+
+    <!-- Modal do Aluno -->
+    <div class="modal fade" id="modalEscolherNivel" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 shadow">
+                <div class="modal-header border-0 bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-person-gear me-2"></i>Solicitar Nível de Leitura</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" id="btnFecharModalAluno"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <div id="formSolicitacaoAluno">
+                        <p class="fs-6 text-muted mb-1">Aluno(a): <strong class="text-dark">{% if aluno %}{{ aluno.nome_completo }}{% elif aluno_ativo %}{{ aluno_ativo.nome_completo }}{% else %}Aluno{% endif %}</strong></p>
+                        <p class="fs-6 text-muted mb-3">Professor responsável: <strong class="text-primary">Prof. {{ user.first_name|default:"Titular" }}</strong></p>
+
+                        <div class="mb-4 text-start">
+                            <label class="form-label fw-bold">Selecione o Nível de Leitura:</label>
+                            <select id="selectNivelAluno" class="form-select form-select-lg">
+                                <option value="1" selected>Nível 1 - Palavras Simples</option>
+                                <option value="2">Nível 2 - Palavras Médias</option>
+                                <option value="3">Nível 3 - Desafio Avançado</option>
+                            </select>
+                        </div>
+
+                        <button type="button" class="btn btn-primary btn-lg rounded-pill w-100 fw-bold" onclick="enviarSolicitacaoAluno()">
+                            <i class="bi bi-send-fill me-1"></i> Solicitar ao Professor
+                        </button>
+                    </div>
+
+                    <!-- Spinner de Aguardando Aprovação -->
+                    <div id="statusAguardandoAluno" class="d-none py-3">
+                        <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+                        <h5 class="fw-bold text-primary mb-2">Aguardando Autorização...</h5>
+                        <p class="text-muted small mb-0">A solicitação foi enviada. O professor analisará no painel dele.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer>
+        <div class="container text-center text-muted small">
+            <p class="mb-0">© 2026 Sistema de Leitura Interativa por Voz — CISEBAM.</p>
+            <p class="mb-0">Desenvolvido por <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none">Carlos Brito</a> e <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none">Alessandra Jastes</a>.</p>
+            <p class="mb-0">Todos os direitos reservados.</p>
+            <div class="mb-0 app-version">
+                Versão {{ versao_app }}
+            </div>
+        </div>
+    </footer>
+    <!-- Scripts Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        const ALUNO_ID = "{% if aluno %}{{ aluno.id }}{% else %}{{ request.GET.aluno_id }}{% endif %}";
+        let solicitacaoIdAtual = null;
+        let intervalChecagemAluno = null;
+
+        function enviarSolicitacaoAluno() {
+            const nivelSelecionado = document.getElementById('selectNivelAluno').value;
+
+            fetch('/palavra/api/solicitacao/criar/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    'aluno_id': ALUNO_ID,
+                    'nivel': nivelSelecionado
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'sucesso') {
+                    solicitacaoIdAtual = data.solicitacao_id;
+                    
+                    // Oculta form e exibe loading
+                    document.getElementById('formSolicitacaoAluno').classList.add('d-none');
+                    document.getElementById('statusAguardandoAluno').classList.remove('d-none');
+                    document.getElementById('btnFecharModalAluno').classList.add('d-none');
+
+                    // Inicia verificação do status da solicitação a cada 2 segundos
+                    intervalChecagemAluno = setInterval(checarStatusAprovacao, 2000);
+                }
+            });
+        }
+
+        function checarStatusAprovacao() {
+            if (!solicitacaoIdAtual) return;
+
+            fetch(`/palavra/api/solicitacao/checar/${solicitacaoIdAtual}/`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'aprovado') {
+                    clearInterval(intervalChecagemAluno);
+                    // Redireciona para a rota exata cadastrada na linha 9 do seu urls.py
+                    window.location.href = `/palavra/exibir_palavras/?aluno_id=${ALUNO_ID}&nivel=${data.nivel}&modo=60s`;
+                } else if (data.status === 'recusado') {
+                    clearInterval(intervalChecagemAluno);
+                    alert("Sua solicitação de nível foi recusada pelo professor.");
+                    
+                    // Restaura o modal
+                    document.getElementById('formSolicitacaoAluno').classList.remove('d-none');
+                    document.getElementById('statusAguardandoAluno').classList.add('d-none');
+                    document.getElementById('btnFecharModalAluno').classList.remove('d-none');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

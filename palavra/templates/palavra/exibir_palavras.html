@@ -1,0 +1,466 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leitura Interativa por Voz</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        .word-card { min-height: 250px; display: flex; align-items: center; justify-content: center; border-radius: 16px; }
+        .word-text { font-size: 4rem; font-weight: 800; letter-spacing: 3px; }
+        .mic-active { animation: pulse 1.2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+    </style>
+</head>
+<body class="bg-light min-vh-100 d-flex flex-column justify-content-between">
+
+    <!-- Header com Nome e Turma do Aluno -->
+    <header class="bg-white shadow-sm py-3 mb-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <h4 class="mb-0 fw-bold text-primary"><i class="bi bi-mic-fill me-2"></i>Leitura Interativa por Voz</h4>
+                <span class="badge bg-light text-dark border px-3 py-2 fs-6">
+                    <i class="bi bi-person-fill text-primary me-1"></i> 
+                    {{ aluno.nome_completo|default:"Aluno Indefinido" }} (Turma: {{ aluno.turma|default:"Geral" }})
+                </span>
+            </div>
+            
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-danger text-white px-3 py-1 rounded-pill fw-bold fs-5">
+                    <i class="bi bi-clock-fill me-1"></i> <span id="globalTimer">60</span>s
+                </div>
+                <div class="bg-success text-white px-3 py-1 rounded-pill fw-bold fs-5">
+                    <i class="bi bi-trophy-fill me-1"></i> <span id="totalPoints">0</span> Pts
+                </div>
+                <span id="counter" class="badge bg-secondary fs-6">0 Lidas</span>
+            </div>
+        </div>
+        <div class="container d-flex gap-2 mt-2">
+            <div class="botao"><a href="{% url 'palavra:gerenciar_palavras' %}" class="btn btn-warning btn-sm">Voltar ao Início</a></div>
+            <div class="botao"><a href="{% url 'palavra:modo' %}?aluno_id={{ aluno.id|default:aluno_id }}" class="btn btn-primary btn-sm">Voltar aos Modos</a></div>
+        </div>
+    </header>
+
+    <main class="container my-auto">
+        <div class="progress mb-2" style="height: 10px;">
+            <div id="progressBar" class="progress-bar bg-info" role="progressbar" style="width: 0%;"></div>
+        </div>
+
+        <div id="cardContainer" class="card shadow-lg border-0 word-card bg-white mb-3">
+            <div class="card-body text-center d-flex flex-column justify-content-center align-items-center">
+                <div class="d-flex gap-2 mb-2">
+                    <span id="badgeType" class="badge bg-secondary fs-6">Aguardando...</span>
+                    <span id="badgePoints" class="badge border border-primary text-primary bg-light fs-6 px-3 py-2 ms-2 fw-semibold">0 Pts Base</span>
+                </div>
+                
+                <div id="wordDisplay" class="word-text text-dark">CLIQUE EM INICIAR</div>
+                
+                <div id="speechFeedback" class="mt-3 text-muted fst-italic fs-5" style="min-height: 30px;">
+                    <i class="bi bi-mic-mute"></i> Microfone desligado
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 p-3 bg-white text-center">
+            <div class="d-flex justify-content-center gap-3">
+                <button id="btnPlay" class="btn btn-primary btn-lg px-5 fw-bold" onclick="startActivity()">
+                    <i class="bi bi-play-fill me-1"></i> Iniciar Desafio
+                </button>
+                <button id="btnSkip" class="btn btn-warning btn-lg fw-bold text-dark px-4" onclick="skipWord()" disabled>
+                    <i class="bi bi-skip-forward-fill me-1"></i> Pular Palavra
+                </button>
+                <button id="btnFinish" class="btn btn-success btn-lg fw-bold px-4" onclick="concluirEtapa()">
+                    <i class="bi bi-check-flag-fill me-1"></i> Concluir Etapa
+                </button>
+                <button class="btn btn-outline-danger btn-lg" onclick="resetAll()">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reiniciar
+                </button>
+            </div>
+        </div>
+    </main>
+    <footer>
+        <div class="container text-center text-muted small">
+            <p class="mb-0">© 2026 Sistema de Leitura Interativa por Voz — CISEBAM.</p>
+            <p class="mb-0">Desenvolvido por <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none">Carlos Brito</a> e <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none">Alessandra Jastes</a>.</p>
+            <p class="mb-0">Todos os direitos reservados.</p>
+            <div class="mb-0 app-version">
+                Versão {{ versao_app }}
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const ALUNO_ID = "{{ aluno.id|default:aluno_id|default:'' }}";
+
+        // Carrega as palavras serializadas vindas da view Python
+        const bancoPalavrasOriginal = {{ palavras_json|safe|default:"[]" }};
+
+        // Formata as palavras para o padrão interno da atividade
+        let rawWords = bancoPalavrasOriginal.map(p => ({
+            text: p.texto,
+            type: p.tipo,
+            label: p.tipo === 'P' ? 'Palavra' : 'Pseudopalavra',
+            basePoints: p.tipo === 'P' ? 10 : 15,
+            level: parseInt(p.dificuldade) || 1
+        }));
+
+        // Embaralha as palavras recebidas
+        let wordQueue = rawWords.sort(() => Math.random() - 0.5);
+
+        let currentIndex = 0;
+        let totalScore = 0;
+        let wordsCompletedCount = 0;
+        let wordsIgnoredCount = 0;
+        let timeElapsed = 0;
+        let globalTimeLeft = 60;
+        
+        // Arrays para guardar diagnóstico detalhado
+        let slowWords = [];
+        let skippedWords = [];
+        let isWaitingConfirmation = false;
+
+        let wordTimer = null;
+        let globalTimer = null;
+        let countdownTimer = null;
+        let recognition = null;
+        let isListening = false;
+        let canAnswer = false;
+
+        // Elementos do DOM
+        const wordDisplay = document.getElementById('wordDisplay');
+        const badgeType = document.getElementById('badgeType');
+        const badgePoints = document.getElementById('badgePoints');
+        const speechFeedback = document.getElementById('speechFeedback');
+        const totalPointsElem = document.getElementById('totalPoints');
+        const globalTimerElem = document.getElementById('globalTimer');
+        const btnPlay = document.getElementById('btnPlay');
+        const btnSkip = document.getElementById('btnSkip');
+        const counter = document.getElementById('counter');
+        const progressBar = document.getElementById('progressBar');
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function cleanText(text) {
+            return text.toLowerCase()
+                    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                    .replace(/[^a-z0-9]/g, "").trim();
+        }
+
+        // Algoritmo para calcular diferença ortográfica/fonética entre duas palavras
+        function calcularDiferencaTexto(a, b) {
+            if (a.length === 0) return b.length;
+            if (b.length === 0) return a.length;
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            matrix[i][j - 1] + 1,
+                            matrix[i - 1][j] + 1
+                        );
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        }
+
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Navegador incompatível. Utilize o Google Chrome.");
+                return;
+            }
+
+            // Ativa filtros de hardware para cancelamento de ruído e eco
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                }).catch(err => console.warn("Filtros de áudio nativos indisponíveis:", err));
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'pt-BR';
+            recognition.continuous = true;       // Escuta contínua
+            recognition.interimResults = true;  // Resposta instantânea
+
+            recognition.onresult = (event) => {
+                if (globalTimeLeft <= 0 || !canAnswer || wordQueue.length === 0) return;
+
+                // Captura o último trecho de voz
+                const resultIndex = event.results.length - 1;
+                const transcript = event.results[resultIndex][0].transcript;
+                const spokenText = cleanText(transcript);
+
+                speechFeedback.innerHTML = `<i class="bi bi-mic-fill text-danger mic-active"></i> Ouvi: "<strong>${spokenText}</strong>"`;
+
+                // 1. TRATAMENTO DE CONFIRMAÇÃO DE SAÍDA (SIM/NÃO)
+                if (isWaitingConfirmation) {
+                    if (spokenText.includes("sim")) {
+                        isWaitingConfirmation = false;
+                        finishActivity("Sessão encerrada a pedido do aluno.");
+                    } else if (spokenText.includes("nao") || spokenText.includes("não")) {
+                        isWaitingConfirmation = false;
+                        speechFeedback.innerHTML = `<span class="text-info fw-bold">Continuando o desafio!</span>`;
+                        canAnswer = true;
+                    }
+                    return;
+                }
+
+                // 2. COMANDO DE VOZ PARA PULAR A PALAVRA VIA FALA
+                const palavrasOuvidas = spokenText.split(" ");
+                
+                if (palavrasOuvidas.includes("pular") || palavrasOuvidas.includes("proxima") || palavrasOuvidas.includes("passar")) {
+                    skipWord(); // Aciona a função de pular existente
+                    return;
+                }
+
+                // 3. VERIFICAÇÃO SE A PALAVRA DITA É A CORRETA
+                const targetWord = cleanText(wordQueue[currentIndex].text);
+
+                for (let palavra of palavrasOuvidas) {
+                    const diferenca = calcularDiferencaTexto(palavra, targetWord);
+                    
+                    // Regra de tolerância ortográfica
+                    const toleranciaPermitida = targetWord.length <= 4 ? 0 : 1;
+
+                    if (diferenca <= toleranciaPermitida) {
+                        canAnswer = false;
+                        processCorrectAnswer();
+                        break;
+                    }
+                }
+            };
+
+            recognition.onend = () => {
+                if (isListening && globalTimeLeft > 0) {
+                    try { recognition.start(); } catch (e) {}
+                }
+            };
+        }
+
+        function startActivity() {
+            if (wordQueue.length === 0) {
+                alert("Nenhuma palavra encontrada para o nível selecionado!");
+                return;
+            }
+            
+            btnPlay.disabled = true;
+            let count = 3;
+
+            wordDisplay.innerHTML = `<span class="text-danger display-1 fw-bold">${count}</span>`;
+            badgeType.innerText = "PREPARE-SE";
+
+            countdownTimer = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    wordDisplay.innerHTML = `<span class="text-danger display-1 fw-bold">${count}</span>`;
+                } else {
+                    clearInterval(countdownTimer);
+                    if (!recognition) initSpeechRecognition();
+                    isListening = true;
+                    try { recognition.start(); } catch (e) {}
+
+                    if (btnSkip) btnSkip.disabled = false;
+
+                    startGlobalTimer();
+                    loadCurrentWord();
+                }
+            }, 1000);
+        }
+
+        function loadCurrentWord() {
+            if (globalTimeLeft <= 0) return;
+
+            if (currentIndex >= wordQueue.length) {
+                finishActivity("Parabéns! Você concluiu todas as palavras deste nível!");
+                return;
+            }
+
+            timeElapsed = 0;
+            canAnswer = false;
+            isWaitingConfirmation = false;
+            
+            const current = wordQueue[currentIndex];
+            const levelLabels = { 1: 'Fácil', 2: 'Médio', 3: 'Difícil' };
+
+            wordDisplay.innerText = current.text;
+            badgeType.innerText = `${current.label} (${levelLabels[current.level] || 'Nível ' + current.level})`;
+            badgeType.className = current.level === 1 ? 'badge bg-success fs-6' : (current.level === 2 ? 'badge bg-primary fs-6' : 'badge bg-danger fs-6');
+            
+            counter.innerText = `${wordsCompletedCount} Lidas`;
+            
+            const progressPercent = ((currentIndex + 1) / wordQueue.length) * 100;
+            progressBar.style.width = `${progressPercent}%`;
+
+            speechFeedback.innerHTML = `<i class="bi bi-mic text-primary"></i> Pode falar a palavra...`;
+
+            setTimeout(() => { if (globalTimeLeft > 0) canAnswer = true; }, 600);
+
+            clearInterval(wordTimer);
+            wordTimer = setInterval(() => {
+                timeElapsed++;
+                
+                if (timeElapsed === 12 && !isWaitingConfirmation) {
+                    isWaitingConfirmation = true;
+                    canAnswer = false;
+                    speechFeedback.innerHTML = `<span class="text-warning fw-bold">Está com dificuldade? Diga "SIM" para parar ou "NÃO" para continuar.</span>`;
+                }
+
+                const penalty = Math.min(timeElapsed * 0.10, 0.90);
+                const potentialPoints = Math.round(current.basePoints * (1 - penalty));
+                badgePoints.innerText = `Vale agora: ${potentialPoints} Pts (${timeElapsed}s)`;
+            }, 1000);
+        }
+
+        function skipWord() {
+            if (!isListening || globalTimeLeft <= 0 || !canAnswer) return;
+
+            clearInterval(wordTimer);
+            canAnswer = false;
+            wordsIgnoredCount++;
+
+            const current = wordQueue[currentIndex];
+            if (current && current.text) {
+                skippedWords.push(current.text);
+            }
+
+            wordDisplay.innerHTML = `<span class="text-warning"><i class="bi bi-skip-forward-fill"></i> Palavra pulada!</span>`;
+
+            setTimeout(() => {
+                if (globalTimeLeft > 0) {
+                    currentIndex++;
+                    loadCurrentWord();
+                }
+            }, 600);
+        }
+
+        function processCorrectAnswer() {
+            clearInterval(wordTimer);
+
+            const current = wordQueue[currentIndex];
+            const penalty = Math.min(timeElapsed * 0.10, 0.90);
+            const earnedPoints = Math.round(current.basePoints * (1 - penalty));
+
+            if (timeElapsed >= 5) {
+                slowWords.push({ palavra: current.text, tempo: timeElapsed });
+            }
+
+            totalScore += earnedPoints;
+            wordsCompletedCount++;
+            totalPointsElem.innerText = totalScore;
+
+            wordDisplay.innerHTML = `<span class="text-success"><i class="bi bi-check-circle-fill"></i> +${earnedPoints} pts!</span>`;
+
+            setTimeout(() => {
+                if (globalTimeLeft > 0) {
+                    currentIndex++;
+                    loadCurrentWord();
+                }
+            }, 800);
+        }
+
+        function startGlobalTimer() {
+            globalTimeLeft = 60;
+            globalTimerElem.innerText = globalTimeLeft;
+
+            globalTimer = setInterval(() => {
+                globalTimeLeft--;
+                globalTimerElem.innerText = globalTimeLeft;
+
+                if (globalTimeLeft <= 0) {
+                    clearInterval(globalTimer);
+                    finishActivity("Seu tempo acabou!");
+                }
+            }, 1000);
+        }
+
+        function concluirEtapa() {
+            if (confirm("Deseja encerrar o desafio e salvar sua pontuação atual?")) {
+                finishActivity("Etapa concluída pelo aluno!");
+            }
+        }
+
+        function finishActivity(reasonMessage) {
+            isListening = false;
+            canAnswer = false;
+            
+            if (recognition) recognition.stop();
+            clearInterval(wordTimer);
+            clearInterval(globalTimer);
+
+            if (btnSkip) btnSkip.disabled = true;
+
+            wordDisplay.innerHTML = `
+                <div class="text-primary fs-2 fw-bold">${reasonMessage}</div>
+                <div class="fs-4 text-dark mt-2">Pontuação Final: <strong>${totalScore} Pts</strong></div>
+                <div class="fs-5 text-muted">Total de palavras lidas: ${wordsCompletedCount} | Puladas: ${wordsIgnoredCount}</div>
+            `;
+            
+            badgeType.innerText = "FIM DO DESAFIO";
+            speechFeedback.innerHTML = `Salvando resultado no banco...`;
+            btnPlay.disabled = false;
+
+            saveResultsToDatabase({
+                aluno_id: ALUNO_ID,
+                pontuacao_total: totalScore,
+                palavras_acertadas: wordsCompletedCount,
+                palavras_ignoradas: wordsIgnoredCount,
+                palavras_com_demora: slowWords,
+                palavras_puladas: skippedWords
+            });
+        }
+
+        function saveResultsToDatabase(payload) {
+            fetch("{% url 'palavra:registrar_resposta' %}", {
+                method: "POST",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie('csrftoken')
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'sucesso') {
+                    speechFeedback.innerHTML = `<span class="text-success fw-bold"><i class="bi bi-check-all"></i> Resultado salvo com sucesso!</span>`;
+                } else {
+                    speechFeedback.innerHTML = `<span class="text-danger fw-bold">Erro ao salvar: ${data.mensagem || 'Falha na requisição'}</span>`;
+                }
+            })
+            .catch(error => {
+                console.error("Erro ao salvar resultado:", error);
+                speechFeedback.innerHTML = `<span class="text-danger fw-bold">Falha de conexão com o servidor.</span>`;
+            });
+        }
+
+        function resetAll() {
+            location.reload();
+        }
+    </script>
+</body>
+</html>

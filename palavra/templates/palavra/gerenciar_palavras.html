@@ -1,0 +1,145 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Palavras - Palavreando</title>
+    <!-- Bootstrap 5 e Ícones da CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+</head>
+<body class="bg-light">
+
+<div class="container py-4">
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-4" style="background-color: #0d6efd; padding-bottom: 4px;">
+        <div class="titulo-carteirinha">
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+                <img src="{% static 'img/logo_t.png' %}" alt="Logo" width="200" height="auto" class="d-inline-block align-text-top me-2" style="object-fit: contain;">
+            </a>
+        </div>
+        <h2 class="fw-bold text-primary">
+            <i class="bi bi-fonts me-2" style="color: #fff;"></i><h1 style="color: #fff; font-family: 'Poppins', sans-serif;">Gerenciador de Palavras</h1>
+        </h2>
+        <div class="d-flex gap-2">
+            <a href="{% url 'palavra:selecionar_aluno' %}" target="_blank" class="btn btn-outline-primary fw-semibold">
+                <i class="bi bi-play-circle-fill me-1"></i> Abrir Tela do Aluno
+            </a>
+            <a href="{% url 'autentica:dashboard' %}" class="btn btn-warning">
+                <i class="bi bi-arrow-left me-1"></i> Voltar
+            </a>
+        </div>
+    </div>
+
+    <!-- Formulário de Inserção com Dificuldade -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-4">
+            <h5 class="card-title mb-3 fw-bold"><i class="bi bi-plus-circle me-1"></i> Inserir Nova Palavra / Pseudopalavra</h5>
+            <form method="post" class="row g-3">
+                {% csrf_token %}
+                
+                <div class="col-md-5">
+                    <label class="form-label fw-semibold">Palavra / Pseudopalavra</label>
+                    {{ form.texto }}
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label fw-semibold">Classificação</label>
+                    {{ form.tipo }}
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Dificuldade</label>
+                    {{ form.dificuldade }}
+                </div>
+
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-success w-100 fw-bold py-2">
+                        <i class="bi bi-plus-lg me-1"></i> Adicionar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabela de Palavras Atualizada -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold text-secondary"><i class="bi bi-list-stars me-1"></i> Palavras Cadastradas</h6>
+            <span class="badge bg-primary fs-6">{{ palavras.count }} Itens</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Texto Cadastrado</th>
+                            <th>Classificação</th>
+                            <th>Dificuldade / Pontuação</th>
+                            <th>Cadastrado por</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in palavras %}
+                        <tr>
+                            <td class="ps-4 fw-bold fs-5 text-dark">{{ p.texto }}</td>
+                            <td>
+                                {% if p.tipo == 'P' %}
+                                    <span class="badge bg-primary px-3 py-2">Palavra Real</span>
+                                {% else %}
+                                    <span class="badge bg-warning text-dark px-3 py-2">Pseudopalavra</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if p.dificuldade == 1 %}
+                                    <span class="badge bg-success-subtle text-success border border-success px-2 py-1">
+                                        <i class="bi bi-star-fill"></i> Fácil (100 pts)
+                                    </span>
+                                {% elif p.dificuldade == 2 %}
+                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-2 py-1">
+                                        <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i> Média (200 pts)
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1">
+                                        <i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i><i class="bi bi-star-fill"></i> Difícil (300 pts)
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted">Prof. {{ p.professor.first_name|default:p.professor.username }}</td>
+                            <td class="text-center">
+                                <a href="{% url 'palavra:deletar_palavra' p.id %}" 
+                                   class="btn btn-outline-danger btn-sm" 
+                                   onclick="return confirm('Tem certeza que deseja excluir esta palavra?');"
+                                   title="Excluir Palavra">
+                                    <i class="bi bi-trash-fill"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                                Nenhuma palavra ou pseudopalavra cadastrada.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<footer>
+    <div class="container text-center text-muted small">
+        <p class="mb-0">© 2026 Sistema de Leitura Interativa por Voz — CISEBAM.</p>
+        <p class="mb-0">Desenvolvido por <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none">Carlos Brito</a> e <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none">Alessandra Jastes</a>.</p>
+        <p class="mb-0">Todos os direitos reservados.</p>
+        <div class="mb-0 app-version">
+            Versão {{ versao_app }}
+        </div>
+    </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Identificação do Aluno</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <!-- Leitor de QR Code JS -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body class="bg-light py-5">
+    <div class="container" style="max-width: 600px;">
+        <div class="card shadow-lg border-0 rounded-4">
+            <div class="card-body p-4 text-center">
+                <h3 class="fw-bold text-primary mb-3">
+                    <i class="bi bi-person-bounding-box me-2"></i>Quem vai jogar agora?
+                </h3>
+                <p class="text-muted">Escaneie seu QR Code ou selecione seu nome na lista abaixo.</p>
+
+                <!-- Área da Câmera para QR Code -->
+                <div class="mb-4">
+                    <div id="reader" class="border rounded-3 overflow-hidden bg-dark" style="width: 100%;"></div>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Formulário de Seleção Manual -->
+                <form action="{% url 'palavra:modo' %}" method="GET">
+                    <div class="mb-3 text-start">
+                        <label class="form-label fw-bold"><i class="bi bi-person-fill text-primary"></i> Selecione o Aluno:</label>
+                        <select name="aluno_id" class="form-select form-select-lg" required>
+                            <option value="" selected disabled>Escolha seu nome...</option>
+                            {% for aluno in alunos %}
+                                <option value="{{ aluno.id }}">{{ aluno.nome_completo }} - Turma: {{ aluno.turma }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold">
+                        <i class="bi bi-play-circle-fill me-1"></i> Continuar
+                    </button>
+                </form>
+                <div class="mt-3">
+                    <a href="{% url 'autentica:dashboard' %}" class="text-decoration-none">
+                        <i class="bi bi-arrow-left-circle me-1"></i> Voltar ao Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer>
+        <div class="container text-center text-muted small">
+            <p class="mb-0">© 2026 Sistema de Leitura Interativa por Voz — CISEBAM.</p>
+            <p class="mb-0">Desenvolvido por <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none">Carlos Brito</a> e <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none">Alessandra Jastes</a>.</p>
+            <p class="mb-0">Todos os direitos reservados.</p>
+            <div class="mb-0 app-version">
+                Versão {{ versao_app }}
+            </div>
+        </div>
+    </footer>
+    <script>
+        function onScanSuccess(decodedText, decodedResult) {
+            try {
+                let idEncontrado = null;
+
+                // 1. Caso o QR code seja uma URL (ex: http://.../?aluno_id=1&prof_id=1)
+                if (decodedText.startsWith('http://') || decodedText.startsWith('https://')) {
+                    const urlObj = new URL(decodedText);
+                    idEncontrado = urlObj.searchParams.get('aluno_id');
+                }
+
+                // 2. Caso seja um JSON (ex: {"aluno_id": 1})
+                else if (decodedText.trim().startsWith('{')) {
+                    const data = JSON.parse(decodedText);
+                    idEncontrado = data.aluno_id;
+                }
+
+                // 3. Caso seja apenas um número inteiro simples (ex: "1")
+                else if (!isNaN(decodedText.trim())) {
+                    idEncontrado = decodedText.trim();
+                }
+
+                // Se localizou um ID numérico válido, redireciona para a rota /palavra/modo/
+                if (idEncontrado && !isNaN(idEncontrado)) {
+                    window.location.href = `/palavra/modo/?aluno_id=${idEncontrado}`;
+                } else {
+                    alert("ID do aluno não identificado no QR Code.");
+                }
+
+            } catch (e) {
+                alert("Erro ao ler QR Code.");
+            }
+        }
+
+        let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+        html5QrcodeScanner.render(onScanSuccess);
+    </script>
+</body>
+</html>

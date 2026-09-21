@@ -1,0 +1,433 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modo Batalha ⚔️</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="shortcut icon" href="#">
+    <style>
+        .battle-card { min-height: 220px; border-radius: 20px; }
+        .score-box { font-size: 2.5rem; font-weight: 800; }
+        .vs-badge { font-size: 2rem; font-weight: 900; color: #dc3545; }
+    </style>
+</head>
+<body class="bg-dark text-white min-vh-100 d-flex flex-column justify-content-between">
+
+    <header class="bg-secondary py-3 shadow">
+        <div class="container d-flex justify-content-around align-items-center text-center">
+            <div>
+                <span class="badge bg-primary fs-6">{{ aluno.nome_completo }} (Você)</span>
+                <div id="myScore" class="score-box text-warning">0 Pts</div>
+            </div>
+
+            <div>
+                <div class="vs-badge">VS</div>
+                <div class="badge bg-danger fs-5"><i class="bi bi-clock-fill me-1"></i><span id="timer">60</span>s</div>
+            </div>
+
+            <div>
+                <span id="oponenteNome" class="badge bg-secondary fs-6">
+                    {% if oponente %}{{ oponente.nome_completo }}{% else %}Aguardando Rival...{% endif %}
+                </span>
+                <div id="oponenteScore" class="score-box text-light">0 Pts</div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container my-auto text-center">
+        
+        <!-- Tela de Busca de Oponente -->
+        <div id="waitingScreen" class="py-5">
+            <h2 class="text-info fw-bold mb-3"><i class="bi bi-search me-2"></i>Procurando um oponente na rede...</h2>
+            <div class="spinner-border text-info" style="width: 4rem; height: 4rem;" role="status"></div>
+        </div>
+
+        <!-- Modal de Convite (Jogador 2) -->
+        <div id="modalDesafio" class="d-none text-dark p-4 card shadow-lg mx-auto my-4 bg-light" style="max-width: 450px; border-radius: 20px;">
+            <h3 class="fw-bold text-danger">⚔️ Desafio Recebido!</h3>
+            <p id="textoDesafio" class="fs-5 mt-2">Um colega quer batalhar com você. Você aceita o desafio?</p>
+            
+            <div class="d-flex justify-content-center gap-3 mt-3">
+                <button id="btnAceitar" class="btn btn-success btn-lg fw-bold py-3 px-4 fs-5" onclick="aceitarDesafio()">
+                    🚀 ACEITAR
+                </button>
+                <button id="btnRecusar" class="btn btn-danger btn-lg fw-bold py-3 px-4 fs-5" onclick="recusarDesafio()">
+                    ❌ RECUSAR
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal de Fim de Jogo -->
+        <div id="modalFimJogo" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-none d-flex align-items-center justify-content-center" style="z-index: 1050;">
+            <div class="card shadow-lg border-0 rounded-4 text-center p-4 bg-white text-dark" style="max-width: 500px; width: 90%;">
+                <div class="card-body">
+                    <h2 id="tituloFimJogo" class="fw-bold mb-4 text-primary">FIM DA BATALHA!</h2>
+                    
+                    <div id="containerResultado" class="d-flex justify-content-center align-items-center gap-4 mb-4">
+                        <!-- Preenchido via JS -->
+                    </div>
+
+                    <p id="mensagemResultado" class="fs-4 fw-bold mb-3"></p>
+                    <p class="text-muted small">Redirecionando para a seleção de modos em <span id="contadorSegundos" class="fw-bold text-danger">5</span>s...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overlay de Contagem Regressiva 5s -->
+        <div id="overlayContagem" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-90 d-flex flex-column justify-content-center align-items-center text-white" style="z-index: 9999;">
+            <h2 class="fw-bold mb-3">A BATALHA VAI COMEÇAR EM:</h2>
+            <h1 id="numeroContagem" class="display-1 fw-bold text-warning" style="font-size: 8rem;">5</h1>
+        </div>
+
+        <!-- Arena do Jogo -->
+        <div id="gameArena" class="d-none">
+            <div id="levelBadge" class="badge bg-success fs-5 mb-3">Nível 1 - Fácil</div>
+            
+            <div class="card battle-card bg-light text-dark shadow-lg d-flex align-items-center justify-content-center mb-4">
+                <div id="wordDisplay" class="display-2 fw-bold">PREPARE-SE</div>
+            </div>
+
+            <div id="micStatus" class="fs-4 fst-italic text-info mb-3">
+                <i class="bi bi-mic-fill"></i> Aguardando início...
+            </div>
+        </div>
+
+    </main>
+
+    <footer>
+        <div class="container text-center text-muted small">
+            <p class="mb-0">© 2026 Sistema de Leitura Interativa por Voz — CISEBAM.</p>
+            <p class="mb-0">Desenvolvido por <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none">Carlos Brito</a> e <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none">Alessandra Jastes</a>.</p>
+            <p class="mb-0">Todos os direitos reservados.</p>
+            <div class="mb-0 app-version">
+                Versão {{ versao_app }}
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    const ALUNO_ID = {{ aluno.id }};
+    const ALUNO_NOME = "{{ aluno.nome_completo }}";
+    const ALUNO_FOTO = "{% if aluno.foto %}{{ aluno.foto.url }}{% else %}{% static 'img/logo_t.png' %}{% endif %}";
+
+    const SALA_ID = {{ partida.id }};
+    const JOGADOR_1_ID = {{ partida.jogador_1.id }};
+    const levelWords = {{ palavras_json|safe }};
+
+    let oponenteNome = "{% if oponente %}{{ oponente.nome_completo }}{% else %}Oponente{% endif %}";
+    let oponenteFoto = "{% if oponente and oponente.foto %}{{ oponente.foto.url }}{% else %}{% static 'img/logo_t.png' %}{% endif %}";
+    let oponenteConectado = {% if oponente %}true{% else %}false{% endif %};
+
+    let currentLevel = 1;
+    let currentIndex = 0;
+    let myPoints = 0;
+    let oponentePoints = 0;
+    let globalTimeLeft = 60;
+    
+    // Controle de Timers e Sincronismo
+    let startTimeStamp = null;
+    let timerInterval = null;
+    let interval5s = null;
+    
+    let recognition = null;
+    let acertosNoNivel = 0;
+    const ACERTOS_PARA_SUBIR = 5;
+
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    let ws = new WebSocket(`${wsProtocol}${window.location.host}/ws/batalha/${SALA_ID}/`);
+
+    window.addEventListener('beforeunload', () => {
+        if (recognition) {
+            try { recognition.stop(); } catch(e) {}
+        }
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.close();
+        }
+    });
+
+    function enviarPresenca() {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({
+                type: 'aluno_entrou',
+                aluno_id: ALUNO_ID,
+                aluno_nome: ALUNO_NOME,
+                aluno_foto: ALUNO_FOTO
+            }));
+        }
+    }
+
+    ws.onopen = () => {
+        enviarPresenca();
+        let pingInterval = setInterval(() => {
+            if (oponenteConectado || ws.readyState !== WebSocket.OPEN) {
+                clearInterval(pingInterval);
+            } else {
+                enviarPresenca();
+            }
+        }, 2000);
+    };
+
+    ws.onmessage = (e) => {
+        let data = JSON.parse(e.data);
+
+        if (data.type === 'aluno_entrou') {
+            if (data.aluno_id !== ALUNO_ID) {
+                oponenteConectado = true;
+                oponenteNome = data.aluno_nome;
+                if (data.aluno_foto) oponenteFoto = data.aluno_foto;
+                
+                document.getElementById('oponenteNome').innerText = oponenteNome;
+
+                if (ALUNO_ID !== JOGADOR_1_ID) {
+                    document.getElementById('waitingScreen').classList.add('d-none');
+                    document.getElementById('modalDesafio').classList.remove('d-none');
+                    document.getElementById('textoDesafio').innerText = `${oponenteNome} quer batalhar com você. Você aceita o desafio?`;
+                }
+            }
+        }
+
+        if (data.type === 'iniciar_contagem_5s') {
+            document.getElementById('waitingScreen').classList.add('d-none');
+            document.getElementById('modalDesafio').classList.add('d-none');
+            
+            // Usa o timestamp universal enviado para sincronizar ambos os navegadores
+            let timestampInicio = data.timestamp_inicio || Date.now();
+            iniciarContagemRegressiva(timestampInicio);
+        }
+
+        if (data.type === 'desafio_recusado') {
+            if (ALUNO_ID === JOGADOR_1_ID) {
+                alert("O seu oponente recusou o desafio!");
+                window.location.href = `/palavra/modo/?aluno_id=${ALUNO_ID}`;
+            }
+        }
+
+        if (data.type === 'atualizar_pontos') {
+            if (data.aluno_id !== ALUNO_ID) {
+                oponentePoints = data.pontos;
+                document.getElementById('oponenteScore').innerText = `${oponentePoints} Pts`;
+            }
+        }
+    };
+
+    if (ALUNO_ID !== JOGADOR_1_ID && oponenteConectado) {
+        document.getElementById('waitingScreen').classList.add('d-none');
+        document.getElementById('modalDesafio').classList.remove('d-none');
+        document.getElementById('textoDesafio').innerText = `${oponenteNome} quer batalhar com você. Você aceita o desafio?`;
+    }
+
+    function aceitarDesafio() {
+        if (!oponenteConectado) {
+            alert("Aguarde o oponente entrar na sala antes de aceitar!");
+            return;
+        }
+        // Envia o carimbo de data/hora atual para que ambas as pontas iniciem juntas
+        ws.send(JSON.stringify({ 
+            type: 'iniciar_contagem_5s',
+            timestamp_inicio: Date.now()
+        }));
+    }
+
+    function recusarDesafio() {
+        ws.send(JSON.stringify({ type: 'desafio_recusado', aluno_id: ALUNO_ID }));
+        setTimeout(() => {
+            window.location.href = `/palavra/modo/?aluno_id=${ALUNO_ID}`;
+        }, 300);
+    }
+
+    function iniciarContagemRegressiva(timestampInicio) {
+        if (interval5s !== null) return;
+
+        const overlay = document.getElementById('overlayContagem');
+        const numDisplay = document.getElementById('numeroContagem');
+        overlay.classList.remove('d-none');
+
+        const tempoFinalContagem = timestampInicio + 5000;
+
+        interval5s = setInterval(() => {
+            let restaMs = tempoFinalContagem - Date.now();
+            let restaSegs = Math.ceil(restaMs / 1000);
+
+            if (restaSegs > 0) {
+                numDisplay.innerText = restaSegs;
+            } else {
+                clearInterval(interval5s);
+                interval5s = null;
+                overlay.classList.add('d-none');
+                
+                // Define o fim exato da partida (60 segundos após o término da contagem)
+                let tempoFinalJogo = tempoFinalContagem + 60000;
+                iniciarPartidaOficial(tempoFinalJogo);
+            }
+        }, 200);
+    }
+
+    function iniciarPartidaOficial(tempoFinalJogo) {
+        document.getElementById('gameArena').classList.remove('d-none');
+        
+        if (timerInterval !== null) {
+            clearInterval(timerInterval);
+        }
+
+        initSpeech();
+        proximaPalavra();
+
+        timerInterval = setInterval(() => {
+            let restaMs = tempoFinalJogo - Date.now();
+            globalTimeLeft = Math.max(0, Math.ceil(restaMs / 1000));
+            document.getElementById('timer').innerText = globalTimeLeft;
+
+            if (globalTimeLeft <= 0) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+
+                if (recognition) {
+                    try { recognition.stop(); } catch(e) {}
+                }
+                
+                // Envia a pontuação final garantida do cliente antes do fechamento
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'atualizar_pontos',
+                        aluno_id: ALUNO_ID,
+                        pontos: myPoints
+                    }));
+
+                    // O Jogador 1 envia a instrução para o banco definir o status como "finalizada"
+                    if (ALUNO_ID === JOGADOR_1_ID) {
+                        setTimeout(() => {
+                            ws.send(JSON.stringify({ type: 'finalizar_partida' }));
+                        }, 300);
+                    }
+                }
+
+                exibirResultadoFinal();
+            }
+        }, 250);
+    }
+
+    function initSpeech() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) return;
+
+        recognition = new SpeechRecognition();
+        recognition.lang = 'pt-BR';
+        recognition.continuous = true;
+
+        recognition.onresult = (e) => {
+            let spoken = e.results[e.results.length - 1][0].transcript.toLowerCase().trim();
+            document.getElementById('micStatus').innerHTML = `<i class="bi bi-mic-fill text-danger"></i> Ouvi: "${spoken}"`;
+
+            let currentList = levelWords[currentLevel] || [];
+            let target = currentList[currentIndex]?.texto?.toLowerCase().trim();
+
+            if (target && spoken.includes(target)) {
+                myPoints += 10 * currentLevel;
+                acertosNoNivel++;
+                document.getElementById('myScore').innerText = `${myPoints} Pts`;
+
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'atualizar_pontos',
+                        aluno_id: ALUNO_ID,
+                        pontos: myPoints
+                    }));
+                }
+
+                if (acertosNoNivel >= ACERTOS_PARA_SUBIR && currentLevel < 3) {
+                    currentLevel++;
+                    acertosNoNivel = 0;
+                    currentIndex = 0;
+                    
+                    const nomesNiveis = {1: "Nível 1 - Fácil", 2: "Nível 2 - Médio", 3: "Nível 3 - Difícil"};
+                    document.getElementById('levelBadge').innerText = nomesNiveis[currentLevel] || `Nível ${currentLevel}`;
+                } else {
+                    currentIndex++;
+                    if (currentIndex >= currentList.length) currentIndex = 0;
+                }
+
+                proximaPalavra();
+            }
+        };
+
+        recognition.onend = () => {
+            if (globalTimeLeft > 0) {
+                try { recognition.start(); } catch(e) {}
+            }
+        };
+
+        recognition.start();
+    }
+
+    function proximaPalavra() {
+        let list = levelWords[currentLevel] || [];
+        if (list.length > 0) {
+            document.getElementById('wordDisplay').innerText = list[currentIndex].texto;
+        }
+    }
+
+    function exibirResultadoFinal() {
+        const modal = document.getElementById('modalFimJogo');
+        const container = document.getElementById('containerResultado');
+        const mensagem = document.getElementById('mensagemResultado');
+
+        const eu = { nome: ALUNO_NOME, foto: ALUNO_FOTO, pontos: myPoints };
+        const rival = { nome: oponenteNome, foto: oponenteFoto, pontos: oponentePoints };
+
+        modal.classList.remove('d-none');
+
+        if (eu.pontos === rival.pontos) {
+            mensagem.innerText = "Empate!";
+            mensagem.className = "fs-3 fw-bold text-warning mb-3";
+            container.innerHTML = `
+                <div class="text-center">
+                    <img src="${eu.foto}" class="rounded-circle border border-4 border-warning shadow" style="width: 80px; height: 80px; object-fit: cover;">
+                    <p class="fw-bold mt-2 mb-0">${eu.nome}</p>
+                    <small class="badge bg-secondary">${eu.pontos} pts</small>
+                </div>
+                <span class="fs-2 fw-bold text-muted">VS</span>
+                <div class="text-center">
+                    <img src="${rival.foto}" class="rounded-circle border border-4 border-warning shadow" style="width: 80px; height: 80px; object-fit: cover;">
+                    <p class="fw-bold mt-2 mb-0">${rival.nome}</p>
+                    <small class="badge bg-secondary">${rival.pontos} pts</small>
+                </div>
+            `;
+        } else if (eu.pontos > rival.pontos) {
+            mensagem.innerText = "🏆 Você Venceu!";
+            mensagem.className = "fs-3 fw-bold text-success mb-3";
+            container.innerHTML = `
+                <div class="text-center">
+                    <img src="${eu.foto}" class="rounded-circle border border-4 border-success shadow" style="width: 90px; height: 90px; object-fit: cover;">
+                    <p class="fw-bold mt-2 mb-0 text-success">${eu.nome}</p>
+                    <small class="badge bg-success">${eu.pontos} pts</small>
+                </div>
+            `;
+        } else {
+            mensagem.innerText = "❌ Vitória de " + rival.nome;
+            mensagem.className = "fs-3 fw-bold text-danger mb-3";
+            container.innerHTML = `
+                <div class="text-center">
+                    <img src="${rival.foto}" class="rounded-circle border border-4 border-danger shadow" style="width: 90px; height: 90px; object-fit: cover;">
+                    <p class="fw-bold mt-2 mb-0 text-danger">${rival.nome}</p>
+                    <small class="badge bg-danger">${rival.pontos} pts</small>
+                </div>
+            `;
+        }
+
+        let redCount = 5;
+        const timerElem = document.getElementById('contadorSegundos');
+        const redInterval = setInterval(() => {
+            redCount--;
+            if (timerElem) timerElem.innerText = redCount;
+            if (redCount <= 0) {
+                clearInterval(redInterval);
+                window.location.href = `/palavra/modo/?aluno_id=${ALUNO_ID}`;
+            }
+        }, 1000);
+    }
+</script>
+</body>
+</html>
