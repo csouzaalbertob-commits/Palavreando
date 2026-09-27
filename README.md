@@ -2,7 +2,7 @@
 
 ### 1. Clonar e criar o ambiente virtual
 ```bash
-git clone <URL_DO_REPOSITORIO>
+git clone https://github.com/csouzaalbertob-commits/Palavreando
 cd Palavreando
 python3 -m venv venv
 source venv/bin/activate
