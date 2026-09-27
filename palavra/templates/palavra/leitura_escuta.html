@@ -1,0 +1,364 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leitura Interativa por Voz</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+</head>
+<body class="bg-light min-vh-100 d-flex flex-column justify-content-between">
+
+    <header class="bg-primary text-white py-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0">Leitura Interativa por Voz</h1>
+            <a href="{% url 'autentica:dashboard' %}" class="btn btn-light text-primary">
+                <i class="bi bi-house-door-fill"></i> Voltar para Home
+            </a>
+        </div>
+    </header>
+
+    <main class="container my-5">
+        <div class="container my-4 text-center">
+            <div class="card shadow-lg p-4 max-w-2xl mx-auto rounded-4 border-0">
+                <!-- Cabeçalho de Status -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="badge bg-primary fs-6">Aluno: {{ aluno.nome_completo|default:"Não identificado" }}</span>
+                    <span class="badge bg-success fs-6">Modo: Ouvir e Falar</span>
+                </div>
+
+                <!-- Área Principal de Exibição da Palavra -->
+                <div id="area-palavra" class="my-5 py-4 bg-light rounded-4 border">
+                    <p id="instrucao-tela" class="text-muted mb-2 fs-5">Escute com atenção...</p>
+                    
+                    <!-- Palavra Inicialmente Oculta -->
+                    <h1 id="palavra-display" class="display-1 fw-bold text-secondary mb-3">❓❓❓</h1>
+                    
+                    <div id="badge-status-container">
+                        <span id="status-voz" class="badge bg-warning text-dark fs-5 px-4 py-2 rounded-pill">
+                            🔊 Computador falando...
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Painel de Pontuação e Revelação de Resultado -->
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <div class="p-3 border rounded-3 bg-white shadow-sm">
+                            <small class="text-muted d-block fw-semibold">Pontos do Acerto</small>
+                            <strong id="pontos-palavra-display" class="fs-3 text-info">+0 pts</strong>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 border rounded-3 bg-white shadow-sm">
+                            <small class="text-muted d-block fw-semibold">Pontuação Total</small>
+                            <strong id="pontos-total-display" class="fs-3 text-success">0 pts</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controles de Suporte / Fallback por Botões -->
+                <div class="d-flex justify-content-center gap-2 flex-wrap mb-3">
+                    <button id="btn-repita" class="btn btn-outline-info rounded-pill px-3">
+                        🔊 Repetir <small class="text-muted">("repita")</small>
+                    </button>
+                    <button id="btn-pular" class="btn btn-outline-warning rounded-pill px-3">
+                        ⏭️ Pular <small class="text-muted">("pular")</small>
+                    </button>
+                    <button id="btn-proxima" class="btn btn-outline-success rounded-pill px-3" disabled>
+                        ➡️ Próxima <small class="text-muted">("próxima")</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-primary text-white py-3 mt-auto">
+        <div class="container text-center">
+            &copy; 2026 Leitura Interativa por Voz — CISEBAM. Todos os direitos reservados.
+        </div>
+    </footer>
+
+    <script>
+        // Dados do Django
+        const palavras = JSON.parse('{{ palavras_json|safe }}');
+        const alunoId = "{{ aluno_id }}";
+        const csrfToken = "{{ csrf_token }}";
+
+        let currentIndex = 0;
+        let pontuacaoTotal = 0;
+        let acertos = 0;
+        let erros = 0;
+        let puladas = [];
+        let erradas = [];
+
+        let jaRespondeuPalavraAtual = false;
+
+        // APIs de Voz do Navegador
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const synth = window.speechSynthesis;
+        let recognition = null;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'pt-BR';
+            recognition.continuous = false;    
+            recognition.interimResults = true;
+        } else {
+            alert("Seu navegador não suporta reconhecimento de voz. Utilize o Google Chrome ou Microsoft Edge.");
+        }
+
+        // Algoritmo de Distância de Levenshtein (Mede a precisão da fala)
+        function calcularSimilaridade(str1, str2) {
+            const s1 = str1.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+            const s2 = str2.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+            if (s1 === s2) return 1.0;
+            
+            const track = Array(s2.length + 1).fill(null).map(() => Array(s1.length + 1).fill(null));
+            for (let i = 0; i <= s1.length; i += 1) track[0][i] = i;
+            for (let j = 0; j <= s2.length; j += 1) track[j][0] = j;
+
+            for (let j = 1; j <= s2.length; j += 1) {
+                for (let i = 1; i <= s1.length; i += 1) {
+                    const indicator = s1[i - 1] === s2[j - 1] ? 0 : 1;
+                    track[j][i] = Math.min(
+                        track[j][i - 1] + 1,
+                        track[j - 1][i] + 1,
+                        track[j - 1][i - 1] + indicator
+                    );
+                }
+            }
+
+            const distance = track[s2.length][s1.length];
+            const maxLength = Math.max(s1.length, s2.length);
+            return maxLength === 0 ? 1.0 : (1 - distance / maxLength);
+        }
+
+        // 1. Verificação e Execução Prioritária de Comandos de Voz
+        function verificarEExecutarComandos(transcricao) {
+            const texto = transcricao.toLowerCase().trim();
+
+            // Variações para "repita"
+            if (texto.includes("repita") || texto.includes("repetir") || texto.includes("de novo")) {
+                try { recognition.stop(); } catch(e){}
+                processarRodadaPalavra(currentIndex);
+                return true;
+            }
+
+            // Variações para "pular"
+            if (texto.includes("pular") || texto.includes("pula") || texto.includes("pule") || texto.includes("passar")) {
+                try { recognition.stop(); } catch(e){}
+                if (palavras[currentIndex]) puladas.push(palavras[currentIndex].texto);
+                avancarProximaPalavra();
+                return true;
+            }
+
+            // Variações para "próxima" (Executa se a palavra atual já foi respondida/revelada)
+            if (texto.includes("proxima") || texto.includes("próxima") || texto.includes("proximo") || texto.includes("próximo") || texto.includes("continuar")) {
+                if (jaRespondeuPalavraAtual) {
+                    try { recognition.stop(); } catch(e){}
+                    avancarProximaPalavra();
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Fluxo Principal da Atividade
+        function iniciarAtividade() {
+            if (!palavras || palavras.length === 0) {
+                document.getElementById('palavra-display').innerText = "Nenhuma palavra encontrada.";
+                return;
+            }
+            processarRodadaPalavra(currentIndex);
+        }
+
+        function processarRodadaPalavra(index) {
+            if (index >= palavras.length) {
+                finalizarAtividade();
+                return;
+            }
+
+            const palavraAtual = palavras[index];
+            jaRespondeuPalavraAtual = false;
+
+            // Reset da interface
+            document.getElementById('palavra-display').innerText = "❓❓❓";
+            document.getElementById('palavra-display').className = "display-1 fw-bold text-secondary mb-3";
+            document.getElementById('instrucao-tela').innerText = "Escute a palavra com atenção...";
+            document.getElementById('pontos-palavra-display').innerText = "+0 pts";
+            document.getElementById('btn-proxima').disabled = true;
+
+            atualizarBadgeStatus("🔊 O computador está lendo...", "bg-info text-dark");
+
+            // Para o microfone antes de emitir o áudio do computador
+            if (recognition) {
+                try { recognition.stop(); } catch(e) {}
+            }
+
+            // Síntese de Voz (Computador lê a palavra)
+            const utterance = new SpeechSynthesisUtterance(palavraAtual.texto);
+            utterance.lang = 'pt-BR';
+            utterance.rate = 0.85;
+
+            // Pausa de 500ms para garantir o encerramento do áudio no alto-falante antes de ligar o microfone
+            utterance.onend = () => {
+                setTimeout(() => {
+                    document.getElementById('instrucao-tela').innerText = "Agora é sua vez! Fale o que escutou:";
+                    atualizarBadgeStatus("🎤 Microfone aberto! Fale agora...", "bg-success text-white");
+                    iniciarEscutaVoz();
+                }, 500);
+            };
+
+            synth.speak(utterance);
+        }
+
+        function iniciarEscutaVoz() {
+            if (!recognition) return;
+
+            try {
+                recognition.start();
+            } catch (e) {
+                // Microfone já ativo
+            }
+
+            recognition.onresult = (event) => {
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcricaoParcial = event.results[i][0].transcript.trim().toLowerCase();
+                    const ehResultadoFinal = event.results[i].isFinal;
+
+                    // PRIORIDADE 1: Avalia se o aluno falou um comando global ("repita", "pular", "próxima")
+                    if (verificarEExecutarComandos(transcricaoParcial)) {
+                        return;
+                    }
+
+                    // PRIORIDADE 2: Se a palavra já foi respondida e não foi um comando, ignora
+                    if (jaRespondeuPalavraAtual) return;
+
+                    // PRIORIDADE 3: Avalia a tentativa de leitura da palavra
+                    const palavraAlvo = palavras[currentIndex].texto.toLowerCase();
+                    const precisao = calcularSimilaridade(transcricaoParcial, palavraAlvo);
+
+                    // Validação Instantânea (Casamento por inclusão ou similaridade >= 60%)
+                    if (transcricaoParcial.includes(palavraAlvo) || precisao >= 0.60) {
+                        try { recognition.stop(); } catch(e){}
+                        tratarComandoOuFala(transcricaoParcial);
+                        return;
+                    }
+
+                    if (ehResultadoFinal) {
+                        tratarComandoOuFala(transcricaoParcial);
+                    }
+                }
+            };
+
+            // Mantém a escuta ativa após dar a resposta para capturar o comando "PRÓXIMA" por voz
+            recognition.onend = () => {
+                if (jaRespondeuPalavraAtual && currentIndex < palavras.length) {
+                    try { recognition.start(); } catch(e){}
+                }
+            };
+        }
+
+        function tratarComandoOuFala(transcricao) {
+            if (jaRespondeuPalavraAtual) return;
+
+            console.log("Áudio capturado:", transcricao);
+            const palavraAtual = palavras[currentIndex];
+
+            // Avaliação da Fala e Revelação da Palavra
+            const precisao = calcularSimilaridade(transcricao, palavraAtual.texto);
+            const percentualPrecisao = Math.round(precisao * 100);
+
+            const pontosBaseDificuldade = (palavraAtual.dificuldade || 1) * 100;
+            const pontosGanhos = Math.round(pontosBaseDificuldade * precisao);
+
+            pontuacaoTotal += pontosGanhos;
+
+            // Revela a palavra na tela
+            document.getElementById('palavra-display').innerText = palavraAtual.texto;
+            document.getElementById('pontos-palavra-display').innerText = `+${pontosGanhos} pts (${percentualPrecisao}%)`;
+            document.getElementById('pontos-total-display').innerText = `${pontuacaoTotal} pts`;
+
+            if (percentualPrecisao >= 70) {
+                acertos++;
+                document.getElementById('palavra-display').className = "display-1 fw-bold text-success mb-3";
+                atualizarBadgeStatus(`✨ Parabéns! Você acertou! Diga "PRÓXIMA" para continuar.`, "bg-success text-white");
+            } else {
+                erros++;
+                erradas.push(palavraAtual.texto);
+                document.getElementById('palavra-display').className = "display-1 fw-bold text-danger mb-3";
+                atualizarBadgeStatus(`Você falou: "${transcricao}". Diga "REPITA" ou "PRÓXIMA".`, "bg-danger text-white");
+            }
+
+            jaRespondeuPalavraAtual = true;
+            document.getElementById('btn-proxima').disabled = false;
+
+            // Reativa o microfone após 300ms para aceitar o comando "PRÓXIMA" sem o aluno precisar clicar na tela
+            setTimeout(() => {
+                if (recognition) {
+                    try { recognition.start(); } catch(e){}
+                }
+            }, 300);
+        }
+
+        function avancarProximaPalavra() {
+            currentIndex++;
+            processarRodadaPalavra(currentIndex);
+        }
+
+        function atualizarBadgeStatus(texto, classesCss) {
+            const badge = document.getElementById('status-voz');
+            badge.innerText = texto;
+            badge.className = `badge fs-5 px-4 py-2 rounded-pill ${classesCss}`;
+        }
+
+        // Atribuição das Ações dos Botões Manuais
+        document.getElementById('btn-repita').onclick = () => processarRodadaPalavra(currentIndex);
+        document.getElementById('btn-pular').onclick = () => { puladas.push(palavras[currentIndex].texto); avancarProximaPalavra(); };
+        document.getElementById('btn-proxima').onclick = () => avancarProximaPalavra();
+
+        // Finalização e Envio do Resultado para o Django
+        function finalizarAtividade() {
+            if (recognition) recognition.stop();
+
+            document.getElementById('area-palavra').innerHTML = `
+                <h2 class="text-success fw-bold display-5">🎉 Atividade Concluída!</h2>
+                <p class="fs-4 text-muted mt-3">Você fez um excelente trabalho!</p>
+                <h3 class="fw-bold text-dark mt-2">Pontuação Total: <span class="text-success">${pontuacaoTotal} pts</span></h3>
+            `;
+
+            fetch("{% url 'palavra:registrar_resposta' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({
+                    aluno_id: alunoId,
+                    pontuacao_total: pontuacaoTotal,
+                    palavras_acertadas: acertos,
+                    palavras_ignoradas: erros,
+                    palavras_puladas: puladas,
+                    palavras_erradas: erradas,
+                    palavras_com_demora: []
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                atualizarBadgeStatus("Resultado salvo com sucesso!", "bg-primary text-white");
+            })
+            .catch(err => console.error("Erro ao salvar resultado:", err));
+        }
+
+        // Inicialização na carga da página
+        window.onload = iniciarAtividade;
+    </script>
+
+    <!-- Scripts Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

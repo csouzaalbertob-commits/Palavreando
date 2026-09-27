@@ -37,7 +37,7 @@
             <p class="fs-5 text-white-50 mb-0">Plataforma Interativa de Avaliação e Estudo de Leitura</p>
 
             <div class="app-version">
-                Versão {{ versao_app }}
+                v{{ APP_VERSION }}
             </div>
         </div>
 
@@ -76,7 +76,7 @@
                             <p class="text-muted small">Cadastre alunos, gerencie o banco de palavras e acompanhe relatórios.</p>
                         </div>
                         <div class="mt-4">
-                            <a href="{% url 'palavra:gerenciar_palavras' %}" class="btn btn-outline-success btn-lg w-100 fw-bold rounded-pill fs-6">
+                            <a href="{% url 'autentica:dashboard' %}" class="btn btn-outline-success btn-lg w-100 fw-bold rounded-pill fs-6">
                                 Painel de Controle
                             </a>
                         </div>
@@ -135,7 +135,7 @@
             <p class="mb-0">Todos os direitos reservados.</p>
 
             <div class="mb-0 app-version">
-                Versão {{ versao_app }}
+                v{{ APP_VERSION }}
             </div>
         </div>
 </footer>

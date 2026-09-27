@@ -9,6 +9,7 @@ urlpatterns = [
     path('alunos/', include('alunos.urls')),
     path('autentica/', include('autentica.urls')),
     path('palavra/', include('palavra.urls')),
+    path('censo/', include('dados_censo.urls', namespace='dados_censo')),
     #path('accounts/', include('django.contrib.auth.urls')),
 ]
 if settings.DEBUG:

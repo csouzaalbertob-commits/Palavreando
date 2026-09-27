@@ -1,20 +1,25 @@
 import io
 import json
+import re  
+import unicodedata
+from datetime import timedelta
+from difflib import SequenceMatcher
+
 import qrcode
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import models, transaction 
+from django.db import models, transaction
 from django.db.models import Count, Max
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.views.decorators.csrf import csrf_exempt
-from datetime import timedelta
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 
 from alunos.models import Aluno, ResultadoLeitura
-from .forms import PalavraForm
-from .models import Palavra, PartidaBatalha, SolicitacaoNivel
+from .forms import FraseForm, PalavraForm
+from .models import Frase, Palavra, PartidaBatalha, SolicitacaoNivel, HistoricoDitado
 
 app_name = 'palavra'
 
@@ -358,3 +363,242 @@ def ranking_recordes(request):
     )
 
     return render(request, 'palavra/ranking.html', {'ranking': ranking})
+
+def leitura_escrita(request):
+    aluno_id = request.GET.get('aluno_id')
+    nivel = request.GET.get('nivel')
+
+    # Busca o aluno se o ID for fornecido
+    aluno = get_object_or_404(Aluno, pk=aluno_id) if aluno_id else None
+
+    # Filtra as palavras de acordo com a dificuldade/nível
+    palavras_qs = Palavra.objects.all()
+    if nivel:
+        palavras_qs = palavras_qs.filter(dificuldade=nivel)
+
+    # Converte o QuerySet para dicionário serializável
+    palavras_lista = list(
+        palavras_qs.values('id', 'texto', 'dificuldade', 'tipo')
+    )
+
+    context = {
+        'aluno': aluno,
+        'aluno_id': aluno_id,
+        'nivel': nivel,
+        'palavras': palavras_lista,
+        'palavras_json': json.dumps(palavras_lista),
+    }
+
+    return render(request, 'palavra/leitura_escuta.html', context)
+
+#======== DITADO ===========
+@login_required
+def cadastrar_frase(request):
+  """View baseada no template para gestão e cadastro de frases/parágrafos."""
+  if request.method == 'POST':
+    form = FraseForm(request.POST)
+    if form.is_valid():
+      form.save()
+      messages.success(
+          request, 'Frase/Parágrafo cadastrado com sucesso para o Ditado!'
+      )
+      return redirect('palavra:cadastrar_frase')
+  else:
+    form = FraseForm()
+
+  # Lista todas as frases para exibir na tabela abaixo do formulário
+  frases = Frase.objects.all().order_by('-criado_em')
+
+  return render(
+      request,
+      'palavra/cadastrar_frase.html',
+      {
+          'form': form,
+          'frases': frases,
+      },
+  )
+
+
+@login_required
+def eliminar_frase(request, frase_id):
+  """Permite eliminar uma frase existente diretamente pelo template."""
+  frase = get_object_or_404(Frase, id=frase_id)
+  frase.delete()
+  messages.success(request, 'Frase/Parágrafo removido com sucesso.')
+  return redirect('palavra:cadastrar_frase')
+
+def normalizar_texto(texto):
+  if not texto:
+    return ''
+  texto = unicodedata.normalize('NFD', texto)
+  texto = ''.join(c for c in texto if unicodedata.category(c) != 'Mn')
+  return texto.lower().strip()
+
+def limpar_pontuacao(texto):
+  return re.sub(r'[^\w\s]', '', texto)
+
+@login_required
+def ditado(request):
+  frase_obj = Frase.objects.order_by('?').first()
+
+  # Resgata aluno_id da URL (GET), da sessão ou do formulário (POST)
+  aluno_id_param = request.GET.get('aluno_id')
+  if aluno_id_param:
+    request.session['aluno_id'] = aluno_id_param
+
+  aluno_id_ativo = (
+      request.POST.get('aluno_id')
+      or request.session.get('aluno_id')
+      or aluno_id_param
+  )
+
+  aluno_selecionado = None
+  if aluno_id_ativo:
+    try:
+      aluno_selecionado = Aluno.objects.filter(
+          id=int(str(aluno_id_ativo).strip())
+      ).first()
+    except (ValueError, TypeError):
+      aluno_selecionado = None
+
+  if request.method == 'POST':
+    frase_id = request.POST.get('frase_id')
+    texto_digitado = request.POST.get('texto_digitado', '').strip()
+
+    frase_original_obj = get_object_or_404(Frase, id=frase_id)
+    texto_original = frase_original_obj.texto.strip()
+
+    palavras_orig = limpar_pontuacao(texto_original).split()
+    palavras_dig = limpar_pontuacao(texto_digitado).split()
+
+    total_palavras = len(palavras_orig)
+    if total_palavras == 0:
+      return JsonResponse(
+          {'sucesso': False, 'mensagem': 'Frase original inválida.'}
+      )
+
+    pontos_por_palavra = 100 / total_palavras
+    pontuacao_total = 0.0
+
+    diferencas_html = []
+    erros_acentuacao = 0
+    erros_palavra = 0
+    palavras_erradas = []
+
+    max_len = max(len(palavras_orig), len(palavras_dig))
+
+    for i in range(max_len):
+      p_orig = palavras_orig[i] if i < len(palavras_orig) else ''
+      p_dig = palavras_dig[i] if i < len(palavras_dig) else ''
+
+      if not p_dig:
+        erros_palavra += 1
+        palavras_erradas.append(
+            {'original': p_orig, 'digitada': '', 'motivo': 'omitida'}
+        )
+        diferencas_html.append(
+            '<span class="text-danger text-decoration-line-through fw-bold"'
+            f' title="Faltou: {p_orig}">___</span>'
+        )
+        continue
+
+      if not p_orig:
+        palavras_erradas.append(
+            {'original': '', 'digitada': p_dig, 'motivo': 'extra'}
+        )
+        diferencas_html.append(
+            '<span class="text-secondary text-decoration-line-through"'
+            f' title="Extra">{p_dig}</span>'
+        )
+        continue
+
+      if p_orig.lower() == p_dig.lower():
+        pontuacao_total += pontos_por_palavra
+        diferencas_html.append(
+            f'<span class="text-success fw-bold">{p_dig}</span>'
+        )
+      else:
+        p_orig_norm = normalizar_texto(p_orig)
+        p_dig_norm = normalizar_texto(p_dig)
+
+        if p_orig_norm == p_dig_norm:
+          pontuacao_total += pontos_por_palavra * 0.7
+          erros_acentuacao += 1
+          palavras_erradas.append(
+              {'original': p_orig, 'digitada': p_dig, 'motivo': 'acentuacao'}
+          )
+          diferencas_html.append(
+              '<span class="text-warning text-decoration-underline fw-bold"'
+              f' title="Correto: {p_orig}">{p_dig}</span>'
+          )
+        else:
+          sim = SequenceMatcher(None, p_orig_norm, p_dig_norm).ratio()
+          if sim >= 0.85:
+            pontuacao_total += pontos_por_palavra * 0.2
+            erros_palavra += 1
+            palavras_erradas.append({
+                'original': p_orig,
+                'digitada': p_dig,
+                'motivo': 'ortografia_leve',
+            })
+            diferencas_html.append(
+                '<span class="text-warning fw-bold"'
+                f' title="Correto: {p_orig}">{p_dig}</span>'
+            )
+          else:
+            erros_palavra += 1
+            palavras_erradas.append({
+                'original': p_orig,
+                'digitada': p_dig,
+                'motivo': 'incorreto',
+            })
+            diferencas_html.append(
+                '<span class="text-danger text-decoration-line-through'
+                f' fw-bold" title="Correto: {p_orig}">{p_dig}</span>'
+            )
+
+    resultado_html = ' '.join(diferencas_html)
+    pontuacao_final = max(0, min(100, round(pontuacao_total)))
+
+    # Persiste no Banco de Dados vinculando o aluno
+    historico = HistoricoDitado.objects.create(
+        usuario_professor=request.user,
+        aluno=aluno_selecionado,
+        frase=frase_original_obj,
+        texto_original=texto_original,
+        texto_digitado=texto_digitado,
+        pontuacao=pontuacao_final,
+        erros_acentuacao=erros_acentuacao,
+        erros_palavra=erros_palavra,
+        palavras_erradas=palavras_erradas,
+    )
+
+    return JsonResponse({
+        'sucesso': True,
+        'historico_id': historico.id,
+        'aluno_nome': (
+            aluno_selecionado.nome_completo
+            if aluno_selecionado
+            else 'Não Identificado'
+        ),
+        'pontuacao': pontuacao_final,
+        'texto_original': texto_original,
+        'texto_digitado': texto_digitado,
+        'resultado_html': resultado_html,
+        'erros_acentuacao': erros_acentuacao,
+        'erros_palavra': erros_palavra,
+        'palavras_erradas': palavras_erradas,
+    })
+
+  # Traz a lista completa de alunos para o Select no template
+  todos_alunos = Aluno.objects.all().order_by('nome_completo')
+
+  return render(
+      request,
+      'palavra/ditado.html',
+      {
+          'frase': frase_obj,
+          'alunos': todos_alunos,
+          'aluno_selecionado': aluno_selecionado,
+      },
+  )

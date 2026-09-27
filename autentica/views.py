@@ -1,4 +1,4 @@
-from collections import Counter
+from collections import Counter, defaultdict
 import json
 
 from django.contrib import messages
@@ -9,7 +9,7 @@ from django.db.models.functions import Coalesce
 from django.shortcuts import redirect, render
 
 from alunos.models import Aluno, ResultadoLeitura
-
+from palavra.models import HistoricoDitado
 from .forms import (
     AtualizarProfessorForm,
     CadastroProfessorForm,
@@ -22,7 +22,6 @@ app_name = 'autentica'
 
 @login_required
 def editar_perfil_professor(request):
-  # Garante que o objeto PerfilProfessor exista para o usuário atual
   perfil, _ = PerfilProfessor.objects.get_or_create(usuario=request.user)
 
   if request.method == 'POST':
@@ -51,19 +50,70 @@ def editar_perfil_professor(request):
 def dashboard(request):
   total_alunos = Aluno.objects.count()
 
-  # Traz todos os alunos e todos os resultados do banco de uma só vez
   alunos = list(Aluno.objects.all().order_by('nome_completo'))
-  todos_resultados = list(ResultadoLeitura.objects.select_related('aluno').all())
+  todos_resultados = list(
+      ResultadoLeitura.objects.select_related('aluno').all()
+  )
 
+  # 1. AGRUPAMENTO DO HISTÓRICO DE DITADOS POR ALUNO PARA CARDS
+  historicos_qs = HistoricoDitado.objects.select_related('aluno', 'frase').order_by('-data_envio')
+
+  ditados_por_aluno = defaultdict(lambda: {
+      'aluno': None,
+      'total_ditados': 0,
+      'soma_pontuacao': 0,
+      'media_pontuacao': 0,
+      'total_erros_palavra': 0,
+      'total_erros_acentuacao': 0,
+      'frases': []
+  })
+
+  for h in historicos_qs:
+      aluno_key = h.aluno.id if h.aluno else 'sem_aluno'
+      aluno_nome = h.aluno.nome_completo if h.aluno else 'Aluno Não Identificado'
+
+      if ditados_por_aluno[aluno_key]['aluno'] is None:
+          ditados_por_aluno[aluno_key]['aluno'] = h.aluno if h.aluno else {'nome_completo': aluno_nome}
+
+      palavras_erradas_list = []
+      if h.palavras_erradas:
+          if isinstance(h.palavras_erradas, str):
+              try:
+                  palavras_erradas_list = json.loads(h.palavras_erradas)
+              except Exception:
+                  palavras_erradas_list = []
+          elif isinstance(h.palavras_erradas, list):
+              palavras_erradas_list = h.palavras_erradas
+
+      ditados_por_aluno[aluno_key]['total_ditados'] += 1
+      ditados_por_aluno[aluno_key]['soma_pontuacao'] += h.pontuacao
+      ditados_por_aluno[aluno_key]['total_erros_palavra'] += h.erros_palavra
+      ditados_por_aluno[aluno_key]['total_erros_acentuacao'] += h.erros_acentuacao
+
+      ditados_por_aluno[aluno_key]['frases'].append({
+          'texto_original': h.texto_original,
+          'texto_digitado': h.texto_digitado,
+          'pontuacao': h.pontuacao,
+          'erros_palavra': h.erros_palavra,
+          'erros_acentuacao': h.erros_acentuacao,
+          'palavras_erradas': palavras_erradas_list,
+          'data_envio': h.data_envio,
+      })
+
+  cards_alunos_ditado = []
+  for key, dados in ditados_por_aluno.items():
+      if dados['total_ditados'] > 0:
+          dados['media_pontuacao'] = round(dados['soma_pontuacao'] / dados['total_ditados'], 1)
+      cards_alunos_ditado.append(dados)
+
+  # 2. PROCESSAMENTO DOS RECORDES DE LEITURA
   alunos_recordes = []
 
   for aluno in alunos:
-    # Filtra os resultados deste aluno em memória usando Python
     resultados_aluno = [r for r in todos_resultados if r.aluno_id == aluno.id]
     total_testes = len(resultados_aluno)
 
     if total_testes > 0:
-      # Ordena: maior pontuação primeiro, data mais recente como segundo critério
       resultados_aluno.sort(
           key=lambda r: (r.pontuacao_total, r.data_realizacao), reverse=True
       )
@@ -71,7 +121,6 @@ def dashboard(request):
       maior_pontuacao = melhor_resultado.pontuacao_total
       data_recorde = melhor_resultado.data_realizacao
 
-      # Ordena por data para determinar a tendência de crescimento
       resultados_cronologicos = sorted(
           resultados_aluno, key=lambda r: r.data_realizacao
       )
@@ -99,7 +148,6 @@ def dashboard(request):
         'tendencia': tendencia,
     })
 
-  # CRITÉRIO DE ORDENAÇÃO DO RANKING DA TABELA PRINCIPAL
   for item in alunos_recordes:
     item['media_eficiencia'] = (
         item['maior_pontuacao'] / item['total_testes']
@@ -118,7 +166,7 @@ def dashboard(request):
 
   top_10_alunos = alunos_recordes[:10]
 
-  # Ranking de Batalhas/Desafios (Soma dos pontos de J1 + J2)
+  # 3. RANKING DE BATALHAS
   ranking_alunos = (
       Aluno.objects.annotate(
           pontos_j1=Coalesce(Sum('partidas_j1__pontos_j1'), Value(0)),
@@ -128,7 +176,7 @@ def dashboard(request):
       .order_by('-pontuacao_total')[:10]
   )
 
-  # Prepara dados para o Chart.js (Envio de TODOS os alunos para o gráfico)
+  # 4. PREPARAÇÃO DO GRÁFICO
   labels_grafico = []
   pontuacoes_grafico = []
   predicoes_grafico = []
@@ -138,7 +186,6 @@ def dashboard(request):
     labels_grafico.append(aluno.nome_completo)
     pontuacoes_grafico.append(item['maior_pontuacao'])
 
-    # Histórico em ordem cronológica para projeção/regressão linear
     historico_aluno = [r for r in todos_resultados if r.aluno_id == aluno.id]
     historico_aluno.sort(key=lambda r: r.data_realizacao)
     historico = [r.pontuacao_total for r in historico_aluno]
@@ -163,7 +210,7 @@ def dashboard(request):
     else:
       predicoes_grafico.append(0)
 
-  # Destaques da Tela (Melhor e Pior Global)
+  # 5. DESTAQUES DA TELA
   resultados_com_pontos = [
       r for r in todos_resultados if r.pontuacao_total > 0
   ]
@@ -190,7 +237,7 @@ def dashboard(request):
     melhor_aluno = None
     aluno_dificuldade = None
 
-  # Contagem de palavras com demora
+  # 6. PALAVRAS COM DEMORA
   contador_demoradas = Counter()
   for res in todos_resultados:
     if res.palavras_com_demora:
@@ -220,9 +267,9 @@ def dashboard(request):
       'total_alunos': total_alunos,
       'alunos': alunos,
       'alunos_recordes': alunos_recordes,
+      'cards_alunos_ditado': cards_alunos_ditado,
       'melhor_aluno': melhor_aluno,
       'aluno_dificuldade': aluno_dificuldade,
-      # Compatibilidade com as chaves exigidas no HTML atualizado do Dashboard:
       'nomes_alunos_json': json.dumps(labels_grafico),
       'pontos_atuais_json': json.dumps(pontuacoes_grafico),
       'chart_predicoes': json.dumps(predicoes_grafico),
@@ -242,7 +289,7 @@ def cadastro_professor(request):
     form = CadastroProfessorForm(request.POST)
     if form.is_valid():
       user = form.save()
-      login(request, user)  # Faz login automático após cadastrar
+      login(request, user)
       messages.success(
           request,
           f'Conta criada com sucesso! Bem-vindo, Prof. {user.first_name}.',

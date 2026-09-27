@@ -19,4 +19,10 @@ urlpatterns = [
     path('api/solicitacao/checar/<int:solicitacao_id>/', views.checar_status_solicitacao, name='checar_status_solicitacao'),
     path('api/solicitacao/pendentes/', views.buscar_solicitacoes_pendentes, name='buscar_solicitacoes_pendentes'),
     path('api/solicitacao/responder/', views.responder_solicitacao, name='responder_solicitacao'),
+    #leitura e escrita
+    path('leitura-escrita/', views.leitura_escrita, name='leitura_escrita'),
+    #ditado
+    path('ditado/', views.ditado, name='ditado'),
+    path('ditado/gerenciar/', views.cadastrar_frase, name='cadastrar_frase'),
+    path('ditado/eliminar/<int:frase_id>/', views.eliminar_frase, name='eliminar_frase'),
 ]

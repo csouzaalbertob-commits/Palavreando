@@ -11,30 +11,29 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     
     <style>
-        /* Estilização dos Containers de Foto Redonda com Borda Azul e Ícone Flutuante */
         .avatar-container {
             position: relative;
             display: inline-block;
-            width: 200px;
-            height: 200px;
-            top: -20px;
+            width: 180px;
+            height: 180px;
+            margin-top: -10px;
         }
 
         .avatar-img {
-            width: 200px;
-            height: 200px;
+            width: 180px;
+            height: 180px;
             object-fit: cover;
             border-radius: 50%;
-            border: 4px solid #0d6efd; /* Borda Azul do Bootstrap (Primary) */
+            border: 4px solid #0d6efd;
             box-shadow: 0 4px 10px rgba(13, 110, 253, 0.2);
         }
 
         .avatar-badge {
             position: absolute;
-            bottom: 2px;
-            right: 2px;
-            width: 36px;
-            height: 36px;
+            bottom: 4px;
+            right: 4px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -43,22 +42,27 @@
             font-size: 1.1rem;
             box-shadow: 0 2px 6px rgba(0,0,0,0.15);
         }
+
         .hover-card {
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
+
         .hover-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important;
+            transform: translateY(-6px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.12) !important;
         }
+
         .linha {
             width: 100%;
             border: 0;
-            border-top: 2px solid #000;
-            margin: 0;
+            border-top: 2px solid #e0e0e0;
+            margin: 2rem 0;
         }
     </style>
 </head>
 <body class="bg-light min-vh-100 d-flex flex-column justify-content-between">
+
+    {% csrf_token %}
 
     <div class="container py-5">
         <!-- Cabeçalho de Boas-Vindas com Nome do Aluno -->
@@ -71,14 +75,14 @@
         </div>
 
         <!-- Grid de Cards de Modos de Jogo -->
-        <div class="row g-4 justify-content-center">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 justify-content-center">
             
             <!-- CARD 1: Modo 60 Segundos -->
-            <div class="col-md-4">
+            <div class="col">
                 <div class="card h-100 border-0 shadow-sm hover-card text-center p-3">
                     <div class="card-body d-flex flex-column align-items-center">
                         <div class="avatar-container mb-3">
-                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" class="text-decoration-none">
+                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" target="_blank" class="text-decoration-none">
                                 <img src="{% static 'img/modo_60s.png' %}" alt="Modo 60s" class="avatar-img">
                             </a>
                             <div class="avatar-badge bg-primary text-white">
@@ -90,7 +94,7 @@
                         <p class="text-muted flex-grow-1">
                             Leia o máximo de palavras que conseguir antes que o cronômetro de 1 minuto termine!
                         </p>
-                        <a href="{% url 'palavra:exibir_palavras' %}?aluno_id={% if aluno %}{{ aluno.id }}{% else %}{{ request.GET.aluno_id }}{% endif %}&modo=60s" class="btn btn-primary btn-lg rounded-pill w-100 fw-bold">
+                        <a href="{% url 'palavra:leitura_escrita' %}?aluno_id={% if aluno %}{{ aluno.id }}{% else %}{{ request.GET.aluno_id }}{% endif %}&modo=60s" class="btn btn-primary btn-lg rounded-pill w-100 fw-bold">
                             <i class="bi bi-play-fill me-1"></i> Jogar 60s
                         </a>
                     </div>
@@ -98,11 +102,11 @@
             </div>
 
             <!-- CARD 2: Modo Batalha (Vs) -->
-            <div class="col-md-4">
+            <div class="col">
                 <div class="card h-100 border-0 shadow-sm hover-card text-center p-3">
                     <div class="card-body d-flex flex-column align-items-center">
                         <div class="avatar-container mb-3">
-                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" class="text-decoration-none">
+                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" target="_blank" class="text-decoration-none">
                                 <img src="{% static 'img/modo_vs.png' %}" alt="Modo Batalha" class="avatar-img">
                             </a>
                             <div class="avatar-badge bg-danger text-white">
@@ -114,22 +118,22 @@
                         <p class="text-muted flex-grow-1">
                             Desafie outro colega online aleatório em um duelo de leitura! Quem falar mais palavras vence.
                         </p>
-                        <a href="/palavra/batalha/?aluno_id={% if aluno %}{{ aluno.id }}{% else %}{{ request.GET.aluno_id }}{% endif %}" class="btn btn-danger btn-lg rounded-pill w-100 fw-bold">
+                        <a href="{% url 'palavra:iniciar_batalha' %}?aluno_id={% if aluno %}{{ aluno.id }}{% else %}{{ request.GET.aluno_id }}{% endif %}" class="btn btn-danger btn-lg rounded-pill w-100 fw-bold">
                             <i class="bi bi-lightning-charge-fill me-1"></i> Entrar na Arena
                         </a>
                     </div>
                 </div>
             </div>
 
-            <!-- CARD 3: Selecione o Nível (Modificado) -->
-            <div class="col-md-4">
+            <!-- CARD 3: Selecione o Nível -->
+            <div class="col">
                 <div class="card h-100 border-0 shadow-sm hover-card text-center p-3">
                     <div class="card-body d-flex flex-column align-items-center">
                         <div class="avatar-container mb-3">
-                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" class="text-decoration-none">
+                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" target="_blank" class="text-decoration-none">
                                 <img src="{% static 'img/modo_up.png' %}" alt="Selecione o Nível" class="avatar-img">
                             </a>
-                            <div class="avatar-badge bg-primary text-white">
+                            <div class="avatar-badge bg-warning text-dark">
                                 <i class="bi bi-sliders"></i>
                             </div>
                         </div>
@@ -138,7 +142,6 @@
                         <p class="text-muted flex-grow-1">
                             Pratique com grupos de palavras configurados pelo professor de acordo com o seu nível de leitura.
                         </p>
-                        <!-- Botão "Escolher Nível" no Card -->
                         <button type="button" class="btn btn-warning btn-lg text-dark rounded-pill w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#modalEscolherNivel">
                             <i class="bi bi-sliders me-1"></i> Escolher Nível
                         </button>
@@ -146,13 +149,65 @@
                 </div>
             </div>
 
+            <!-- CARD 4: Ouvir e Falar -->
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm hover-card text-center p-3">
+                    <div class="card-body d-flex flex-column align-items-center">
+                        <div class="avatar-container mb-3">
+                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" target="_blank" class="text-decoration-none">
+                                <img src="{% static 'img/modo_ouvir_falar.png' %}" alt="Ouvir e Falar" class="avatar-img">
+                            </a>
+                            <div class="avatar-badge bg-success text-white">
+                                <i class="bi bi-volume-up-fill"></i>
+                            </div>
+                        </div>
+                        <h3 class="fw-bold text-dark">Ouvir e Falar</h3>
+                        <span class="badge bg-success text-white mb-3">Aprenda Palavras</span>
+                        <p class="text-muted flex-grow-1">
+                            Pratique escutando as palavras e repetindo com precisão no seu próprio ritmo.
+                        </p>
+                        <button type="button" class="btn btn-success btn-lg rounded-pill w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#modalOuvirEFalar">
+                            <i class="bi bi-mic-fill me-1"></i> Ouvir e Falar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARD 5: Ditado Eletrónico -->
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm hover-card text-center p-3">
+                    <div class="card-body d-flex flex-column align-items-center">
+                        <div class="avatar-container mb-3">
+                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" target="_blank" class="text-decoration-none">
+                                <img src="{% static 'img/modo_ditado.png' %}" alt="Ditado Interativo" class="avatar-img">
+                            </a>
+                            <div class="avatar-badge bg-info text-white">
+                                <i class="bi bi-ear-fill"></i>
+                            </div>
+                        </div>
+                        <h3 class="fw-bold text-dark">Ditado</h3>
+                        <span class="badge bg-info text-dark mb-3">Ditado Eletrônico</span>
+                        <p class="text-muted flex-grow-1">
+                            Escute com atenção a frase ditada pelo sistema e digite exatamente o que ouviu para testar a sua escrita, acentuação e pontuação.
+                        </p>
+                        <button type="button" class="btn btn-info btn-lg text-white rounded-pill w-100 fw-bold" data-bs-toggle="modal" data-bs-target="#modalDitado">
+                            <i class="bi bi-headphones me-1"></i> Iniciar Ditado
+                        </button>
+                    </div>
+                </div>
+            </div>
+
         </div>
+
         <hr class="linha">
-        <br><br>
-        <div class="botao"><a href="{% url 'autentica:dashboard' %}" class="btn btn-warning">Voltar ao Início</a></div><br>
+        <div class="text-center my-4">
+            <a href="{% url 'autentica:dashboard' %}" class="btn btn-secondary btn-lg rounded-pill px-4">
+                <i class="bi bi-arrow-left me-1"></i> Voltar ao Início
+            </a>
+        </div>
     </div>
 
-    <!-- Modal do Aluno -->
+    <!-- Modal 1: Solicitar Nível do Aluno -->
     <div class="modal fade" id="modalEscolherNivel" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content rounded-4 shadow">
@@ -179,7 +234,6 @@
                         </button>
                     </div>
 
-                    <!-- Spinner de Aguardando Aprovação -->
                     <div id="statusAguardandoAluno" class="d-none py-3">
                         <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
                         <h5 class="fw-bold text-primary mb-2">Aguardando Autorização...</h5>
@@ -189,30 +243,99 @@
             </div>
         </div>
     </div>
-    <footer>
+
+    <!-- Modal 2: Ouvir e Falar -->
+    <div class="modal fade" id="modalOuvirEFalar" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 shadow">
+                <div class="modal-header border-0 bg-success text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-volume-up-fill me-2"></i>Ouvir e Falar</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <p class="fs-6 text-muted mb-1">Aluno(a): <strong class="text-dark">{% if aluno %}{{ aluno.nome_completo }}{% elif aluno_ativo %}{{ aluno_ativo.nome_completo }}{% else %}Aluno{% endif %}</strong></p>
+                    <p class="fs-6 text-muted mb-3">Escolha o nível de dificuldade para iniciar o treino de síntese e reconhecimento de voz:</p>
+
+                    <div class="mb-4 text-start">
+                        <label class="form-label fw-bold">Selecione a Dificuldade:</label>
+                        <select id="selectNivelOuvirEFalar" class="form-select form-select-lg">
+                            <option value="1" selected>Nível 1 - Fácil (100 pts)</option>
+                            <option value="2">Nível 2 - Média (200 pts)</option>
+                            <option value="3">Nível 3 - Difícil (300 pts)</option>
+                        </select>
+                    </div>
+
+                    <button type="button" class="btn btn-success btn-lg rounded-pill w-100 fw-bold" onclick="iniciarOuvirEFalar()">
+                        <i class="bi bi-play-circle-fill me-1"></i> Iniciar Treino
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 3: Ditado Eletrónico -->
+    <div class="modal fade" id="modalDitado" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 shadow">
+                <div class="modal-header border-0 bg-info text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-headphones me-2"></i>Ditado Eletrônico</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <p class="fs-6 text-muted mb-1">Aluno(a): <strong class="text-dark">{% if aluno %}{{ aluno.nome_completo }}{% elif aluno_ativo %}{{ aluno_ativo.nome_completo }}{% else %}Aluno{% endif %}</strong></p>
+                    <p class="fs-6 text-muted mb-3">Escolha a dificuldade do ditado para começar a escutar e digitar:</p>
+
+                    <div class="mb-4 text-start">
+                        <label class="form-label fw-bold">Selecione o Nível de Dificuldade:</label>
+                        <select id="selectNivelDitado" class="form-select form-select-lg">
+                            <option value="1" selected>Nível 1 - Fácil (Palavras simples)</option>
+                            <option value="2">Nível 2 - Médio (Frases curtas)</option>
+                            <option value="3">Nível 3 - Difícil (Pontuação e acentuação)</option>
+                        </select>
+                    </div>
+
+                    <button type="button" class="btn btn-info btn-lg text-white rounded-pill w-100 fw-bold" onclick="iniciarDitado()">
+                        <i class="bi bi-pencil-square me-1"></i> Iniciar Ditado
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="py-3 bg-white border-top mt-auto">
         <div class="container text-center text-muted small">
-            <p class="mb-0">© 2026 Sistema de Leitura Interativa por Voz — CISEBAM.</p>
-            <p class="mb-0">Desenvolvido por <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none">Carlos Brito</a> e <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none">Alessandra Jastes</a>.</p>
+            <p class="mb-1">© 2026 Sistema de Leitura Interativa por Voz — CISEBAM.</p>
+            <p class="mb-1">Desenvolvido por <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none">Carlos Brito</a> e <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none">Alessandra Jastes</a>.</p>
             <p class="mb-0">Todos os direitos reservados.</p>
             <div class="mb-0 app-version">
-                Versão {{ versao_app }}
+                v{{ APP_VERSION }}
             </div>
         </div>
     </footer>
+
     <!-- Scripts Bootstrap -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
         const ALUNO_ID = "{% if aluno %}{{ aluno.id }}{% else %}{{ request.GET.aluno_id }}{% endif %}";
+        const URL_LEITURA_ESCRITA = "{% url 'palavra:leitura_escrita' %}";
+        const URL_DITADO = "{% url 'palavra:ditado' %}";
         let solicitacaoIdAtual = null;
         let intervalChecagemAluno = null;
+
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+        }
 
         function enviarSolicitacaoAluno() {
             const nivelSelecionado = document.getElementById('selectNivelAluno').value;
 
             fetch('/palavra/api/solicitacao/criar/', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
                 body: JSON.stringify({
                     'aluno_id': ALUNO_ID,
                     'nivel': nivelSelecionado
@@ -223,15 +346,14 @@
                 if (data.status === 'sucesso') {
                     solicitacaoIdAtual = data.solicitacao_id;
                     
-                    // Oculta form e exibe loading
                     document.getElementById('formSolicitacaoAluno').classList.add('d-none');
                     document.getElementById('statusAguardandoAluno').classList.remove('d-none');
                     document.getElementById('btnFecharModalAluno').classList.add('d-none');
 
-                    // Inicia verificação do status da solicitação a cada 2 segundos
                     intervalChecagemAluno = setInterval(checarStatusAprovacao, 2000);
                 }
-            });
+            })
+            .catch(err => console.error("Erro ao enviar solicitação:", err));
         }
 
         function checarStatusAprovacao() {
@@ -242,18 +364,27 @@
             .then(data => {
                 if (data.status === 'aprovado') {
                     clearInterval(intervalChecagemAluno);
-                    // Redireciona para a rota exata cadastrada na linha 9 do seu urls.py
-                    window.location.href = `/palavra/exibir_palavras/?aluno_id=${ALUNO_ID}&nivel=${data.nivel}&modo=60s`;
+                    window.location.href = `${URL_LEITURA_ESCRITA}?aluno_id=${ALUNO_ID}&nivel=${data.nivel}&modo=60s`;
                 } else if (data.status === 'recusado') {
                     clearInterval(intervalChecagemAluno);
                     alert("Sua solicitação de nível foi recusada pelo professor.");
                     
-                    // Restaura o modal
                     document.getElementById('formSolicitacaoAluno').classList.remove('d-none');
                     document.getElementById('statusAguardandoAluno').classList.add('d-none');
                     document.getElementById('btnFecharModalAluno').classList.remove('d-none');
                 }
-            });
+            })
+            .catch(err => console.error("Erro ao checar status:", err));
+        }
+
+        function iniciarOuvirEFalar() {
+            const nivel = document.getElementById('selectNivelOuvirEFalar').value;
+            window.location.href = `${URL_LEITURA_ESCRITA}?aluno_id=${ALUNO_ID}&nivel=${nivel}&modo=ouvir_falar`;
+        }
+
+        function iniciarDitado() {
+            const nivel = document.getElementById('selectNivelDitado').value;
+            window.location.href = `${URL_DITADO}?aluno_id=${ALUNO_ID}&nivel=${nivel}`;
         }
     </script>
 </body>

@@ -1,6 +1,11 @@
+.env
+venv/
 *.pyc
 __pycache__/
 db.sqlite3
-.env
-venv/
+staticfiles/
+media/
 .vscode/
+.idea/
+dados_censo/
+*.csv

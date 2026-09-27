@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     # 3rd party
     #'django_extensions',
     'channels',
@@ -38,6 +39,7 @@ INSTALLED_APPS = [
     'alunos',
     'autentica',
     'base',
+    'dados_censo',
     'palavra',
 ]
 
@@ -63,6 +65,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'sistema.context_processors.global_version',  # <--- Altere 'sistema' para 'base'
             ],
         },
     },
@@ -107,7 +110,10 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
+AUTHENTICATION_BACKENDS = [
+    'autentica.backends.EmailOrUsernameModelBackend', 
+    'django.contrib.auth.backends.ModelBackend',     
+]
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
@@ -146,5 +152,5 @@ MAILERS = {
 }
 
 # Configuração da versão do aplicativo
-APP_VERSION = '1.5.1'
-versao = settings.APP_VERSION
+APP_VERSION = '1.5.3'
+

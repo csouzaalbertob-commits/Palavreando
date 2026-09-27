@@ -9,6 +9,21 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .full-width-section {
+            width: 100vw;
+            position: relative;
+            left: 50%;
+            right: 50%;
+            margin-left: -50vw;
+            margin-right: -50vw;
+        }
+        .scrollable-history-container {
+            max-height: 450px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+        }
+    </style>
 </head>
 <body class="bg-light">
     <!-- Modal de Solicitação Recebida no Lado do Professor -->
@@ -60,6 +75,8 @@
                         </div>
                         <div class="d-flex gap-2">
                             <a href="{% url 'alunos:cadastrar_aluno' %}" class="btn btn-success"><i class="bi bi-person-plus-fill me-1"></i> Cadastrar Aluno</a>
+                            <a href="{% url 'palavra:gerenciar_palavras' %}" class="btn btn-danger"><i class="bi bi-person-plus-fill me-1"></i> Inserir Palavra</a>
+                            <a href="{% url 'palavra:cadastrar_frase' %}" class="btn btn-info"><i class="bi bi-person-plus-fill me-1"></i> Inserir Frases</a>
                             <a href="{% url 'base:home' %}" class="btn btn-warning text-dark"><i class="bi bi-house-door-fill me-1"></i> Voltar Início</a>
                         </div>
                     </div>
@@ -349,7 +366,95 @@
                 </div>
             </div>
         </div>
+        <!-- Nova Seção: Histórico Recente de Ditados (100% de Largura com Scroll Vertical) -->
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 my-3">
+            {% for item in cards_alunos_ditado %}
+                <div class="col">
+                    <div class="card h-100 shadow-sm border-0 rounded-4">
+                        <!-- Cabeçalho do Card do Aluno -->
+                        <div class="card-header bg-primary text-white p-3 rounded-top-4 d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="avatar-circle bg-white text-primary fw-bold rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                    {{ item.aluno.nome_completo|default:"A"|slice:":1" }}
+                                </div>
+                                <div>
+                                    <h5 class="mb-0 fw-bold fs-6">{{ item.aluno.nome_completo }}</h5>
+                                    <small class="text-white-50">{{ item.total_ditados }} ditado(s) realizado(s)</small>
+                                </div>
+                            </div>
+                            <span class="badge bg-light text-primary fs-6">{{ item.media_pontuacao }} pts (Média)</span>
+                        </div>
 
+                        <!-- Resumo de Erros / Indicadores -->
+                        <div class="card-body">
+                            <div class="row text-center mb-3 g-2">
+                                <div class="col-6">
+                                    <div class="p-2 bg-light rounded-3 border">
+                                        <small class="text-muted d-block">Erros Ortográficos</small>
+                                        <span class="fw-bold text-danger fs-5">{{ item.total_erros_palavra }}</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="p-2 bg-light rounded-3 border">
+                                        <small class="text-muted d-block">Erros Acentuação</small>
+                                        <span class="fw-bold text-warning fs-5">{{ item.total_erros_acentuacao }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h6 class="fw-bold text-secondary mb-2">
+                                <i class="bi bi-journal-text me-1"></i>Frases Ouvidas & Respostas:
+                            </h6>
+
+                            <!-- Accordion / Lista de Frases Ouvidas -->
+                            <div class="accordion accordion-flush" id="accAluno{{ forloop.counter }}">
+                                {% for frase in item.frases %}
+                                    <div class="accordion-item border rounded-3 mb-2">
+                                        <h2 class="accordion-header" id="heading{{ forloop.parentloop.counter }}_{{ forloop.counter }}">
+                                            <button class="accordion-button collapsed p-2 fs-6" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.parentloop.counter }}_{{ forloop.counter }}">
+                                                <div class="d-flex justify-content-between w-100 pe-2 align-items-center">
+                                                    <span class="text-truncate" style="max-width: 180px;">{{ frase.texto_original }}</span>
+                                                    <span class="badge {% if frase.pontuacao >= 70 %}bg-success{% else %}bg-danger{% endif %} ms-1">
+                                                        {{ frase.pontuacao }} pts
+                                                    </span>
+                                                </div>
+                                            </button>
+                                        </h2>
+                                        <div id="collapse{{ forloop.parentloop.counter }}_{{ forloop.counter }}" class="accordion-collapse collapse" data-bs-parent="#accAluno{{ forloop.parentloop.counter }}">
+                                            <div class="accordion-body p-2 fs-7 bg-light">
+                                                <p class="mb-1"><strong>Original:</strong> {{ frase.texto_original }}</p>
+                                                <p class="mb-1"><strong>Digitado:</strong> <span class="text-secondary">{{ frase.texto_digitado }}</span></p>
+                                                
+                                                {% if frase.palavras_erradas %}
+                                                    <div class="mt-2">
+                                                        <small class="fw-bold text-danger d-block">Palavras com Erro:</small>
+                                                        <div class="d-flex flex-wrap gap-1 mt-1">
+                                                            {% for erro in frase.palavras_erradas %}
+                                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                                                    {{ erro.digitada|default:"___" }} &rarr; {{ erro.original }}
+                                                                </span>
+                                                            {% endfor %}
+                                                        </div>
+                                                    </div>
+                                                {% else %}
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle mt-1">
+                                                        <i class="bi bi-check-circle me-1"></i> Nenhuma palavra errada
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12">
+                    <div class="alert alert-info text-center">Nenhum histórico de ditado registrado.</div>
+                </div>
+            {% endfor %}
+        </div>
     </div>
 
     <!-- MODAL DIAGNÓSTICO E FICHA DO ALUNO -->
@@ -457,13 +562,13 @@
         </div>
     </div>
 
-    <footer>
+    <footer class="mt-4">
         <div class="container text-center text-muted small">
             <p class="mb-0">© 2026 Sistema de Leitura Interativa por Voz — CISEBAM.</p>
             <p class="mb-0">Desenvolvido por <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none">Carlos Brito</a> e <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none">Alessandra Jastes</a>.</p>
             <p class="mb-0">Todos os direitos reservados.</p>
             <div class="mb-0 app-version">
-                Versão {{ versao_app }}
+                v{{ APP_VERSION }}
             </div>
         </div>
     </footer>
@@ -488,7 +593,7 @@
             const nomesAlunos = {{ nomes_alunos_json|safe|default:"['Carlos Brito']" }};
             const pontuacaoAtual = {{ pontos_atuais_json|safe|default:"[114]" }};
             
-            // Calcula/Projeta crescimento de pronúncia baseado na tendência (projeção +20%)
+            // Calcula/Projeta crescimento de pronúncia baseado na tendência (projeção +25%)
             const projecaoEvolucao = pontuacaoAtual.map(p => Math.round(p * 1.25));
 
             if (chartEvolucaoGeral) chartEvolucaoGeral.destroy();
@@ -537,111 +642,6 @@
                 modalFichaBsInstance = new bootstrap.Modal(modalElement);
             }
             modalFichaBsInstance.show();
-
-            // Reseta estado do modal
-            document.getElementById('modalAlunoNome').innerText = 'Carregando...';
-            document.getElementById('modalAlunoSerieTurma').innerText = '---';
-            document.getElementById('modalAlunoTotalTestes').innerText = '0';
-            document.getElementById('modalAlunoPPM').innerText = '0';
-            document.getElementById('modalAlunoPrecisao').innerText = '0%';
-            document.getElementById('modalAlunoRecorde').innerText = '0 pts';
-            
-            document.getElementById('listaPalavrasDemoradas').innerHTML = '<li class="list-group-item text-muted">Carregando...</li>';
-            document.getElementById('listaPalavrasPuladas').innerHTML = '<li class="list-group-item text-muted">Carregando...</li>';
-            document.getElementById('listaPalavrasErradas').innerHTML = '<li class="list-group-item text-muted">Carregando...</li>';
-
-            fetch(`/alunos/api/ficha/${alunoId}/`)
-            .then(res => {
-                if (!res.ok) {
-                    throw new Error(`Erro na requisição: ${res.status} ${res.statusText}`);
-                }
-                return res.json();
-            })
-            .then(data => {
-                document.getElementById('modalAlunoNome').innerText = data.nome_completo || 'Sem nome';
-                document.getElementById('modalAlunoSerieTurma').innerText = `${data.serie || ''} ${data.turma ? '- ' + data.turma : ''}`;
-                document.getElementById('modalAlunoTotalTestes').innerText = data.total_testes || 0;
-                
-                if (data.foto_url) {
-                    document.getElementById('modalAlunoFoto').src = data.foto_url;
-                } else {
-                    document.getElementById('modalAlunoFoto').src = "{% static 'img/avatar_placeholder.png' %}";
-                }
-
-                document.getElementById('modalAlunoPPM').innerText = data.ppm_medio || 0;
-                document.getElementById('modalAlunoPrecisao').innerText = `${data.precisao_media || 0}%`;
-                document.getElementById('modalAlunoRecorde').innerText = `${data.maior_pontuacao || 0} pts`;
-
-                preencherLista('listaPalavrasDemoradas', data.palavras_demoradas);
-                preencherLista('listaPalavrasPuladas', data.palavras_puladas);
-                preencherLista('listaPalavrasErradas', data.palavras_erradas);
-
-                renderizarGraficoAluno(data.historico_rotulos || [], data.historico_pontos || [], data.historico_ppm || []);
-            })
-            .catch(err => {
-                console.error("Falha ao buscar ficha do aluno:", err);
-                document.getElementById('modalAlunoNome').innerText = 'Erro ao carregar dados do aluno';
-                document.getElementById('listaPalavrasDemoradas').innerHTML = '<li class="list-group-item text-danger">Falha no carregamento</li>';
-                document.getElementById('listaPalavrasPuladas').innerHTML = '<li class="list-group-item text-danger">Falha no carregamento</li>';
-                document.getElementById('listaPalavrasErradas').innerHTML = '<li class="list-group-item text-danger">Falha no carregamento</li>';
-            });
-        }
-
-        function preencherLista(elementId, palavras) {
-            const el = document.getElementById(elementId);
-
-            if (!palavras || !Array.isArray(palavras) || palavras.length === 0) {
-                el.innerHTML = '<li class="list-group-item text-muted py-2">Nenhum registro</li>';
-                return;
-            }
-
-            el.innerHTML = palavras
-                .map(p => {
-                    if (typeof p === 'object' && p !== null) {
-                        const texto = p.PALAVRA || p.palavra || p.texto || '';
-                        const tempo = p.TEMPO || p.tempo ? ` (${p.TEMPO || p.tempo}s)` : '';
-                        return `<li class="list-group-item fw-bold text-uppercase py-2">${texto}${tempo}</li>`;
-                    }
-                    return `<li class="list-group-item fw-bold text-uppercase py-2">${p}</li>`;
-                })
-                .join('');
-        }
-
-        function renderizarGraficoAluno(rotulos, pontos, ppm) {
-            const ctx = document.getElementById('graficoAlunoModal').getContext('2d');
-            
-            if (chartAlunoInstance) chartAlunoInstance.destroy();
-
-            chartAlunoInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: rotulos.length ? rotulos : ['Sessão 1', 'Sessão 2', 'Sessão 3'],
-                    datasets: [
-                        {
-                            label: 'Pontuação / Pronúncia',
-                            data: pontos.length ? pontos : [20, 50, 114],
-                            borderColor: '#0d6efd',
-                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                            fill: true,
-                            tension: 0.3
-                        },
-                        {
-                            label: 'PPM (Palavras por Minuto)',
-                            data: ppm.length ? ppm : [15, 22, 35],
-                            borderColor: '#198754',
-                            borderDash: [5, 5],
-                            tension: 0.3
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
         }
     </script>
 </body>
