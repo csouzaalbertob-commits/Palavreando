@@ -289,7 +289,7 @@ def cadastro_professor(request):
     form = CadastroProfessorForm(request.POST)
     if form.is_valid():
       user = form.save()
-      login(request, user)
+      login(request, user, backend='django.contrib.auth.backends.ModelBackend')
       messages.success(
           request,
           f'Conta criada com sucesso! Bem-vindo, Prof. {user.first_name}.',
