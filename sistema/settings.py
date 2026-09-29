@@ -161,5 +161,5 @@ MAILERS = {
 }
 
 # Configuração da versão do aplicativo
-APP_VERSION = '1.5.5'
+APP_VERSION = '1.6.0'
 

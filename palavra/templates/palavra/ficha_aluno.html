@@ -1,28 +1,7 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
-    <link rel="icon" href="{% static 'img/favicon.png' %}" type="image/png">
-    <title>Ficha do Aluno - Cartão de Acesso</title>
-    <style>
-        body { font-family: sans-serif; display: flex; justify-content: center; padding: 40px; }
-        .cartao {
-            border: 2px dashed #333;
-            border-radius: 12px;
-            padding: 24px;
-            width: 300px;
-            text-align: center;
-            background: #fff;
-        }
-        .qr-code { width: 220px; height: 220px; margin: 15px 0; }
-        @media print {
-            .btn-imprimir { display: none; }
-        }
-    </style>
-</head>
-<body>
+{% extends "base/basepg.html" %}
+{% load static %}
 
+{% block main%}
     <div class="cartao">
         <h2>Avaliação de Fluência</h2>
         <p><strong>Aluno:</strong> {{ aluno_nome }}</p>
@@ -34,15 +13,4 @@
         <p><small>Aproxime da câmera do Chromebook para iniciar</small></p>
         <button class="btn-imprimir" onclick="window.print()">Imprimir Cartão</button>
     </div>
-    <footer>
-        <div class="container text-center text-muted small">
-            <p class="mb-0">© 2026 Sistema de Leitura Interativa por Voz — CISEBAM.</p>
-            <p class="mb-0">Desenvolvido por <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none">Carlos Brito</a> e <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none">Alessandra Jastes</a>.</p>
-            <p class="mb-0">Todos os direitos reservados.</p>
-            <div class="mb-0 app-version">
-                v{{ APP_VERSION }}
-            </div>
-        </div>
-    </footer>
-</body>
-</html>
+    {% endblock main %}
