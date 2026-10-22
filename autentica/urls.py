@@ -17,4 +17,13 @@ urlpatterns = [
         template_name='autentica/alterar_senha.html',
         success_url='/autentica/perfil/editar/'
     ), name='password_change'),
+    # API Escola, DRE e Cidade
+    path(
+        'api/dres/', views.buscar_dres_por_cidade, name='buscar_dres_por_cidade'
+    ),
+    path(
+        'api/escolas/',
+        views.buscar_escolas_por_dre,
+        name='buscar_escolas_por_dre',
+    ),
 ]

@@ -1,73 +1,89 @@
-{% extends "base/basepg.html" %}
 {% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modo Batalha ⚔️ — Palavreando</title>
+    
+    <!-- Google Fonts: Montserrat (Sem Serifa, Garrafal e de Alta Legibilidade) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,800;0,900;1,800;1,900&display=swap" rel="stylesheet">
 
-{% block style %}
-        .battle-card { min-height: 220px; border-radius: 20px; }
-        .score-box { font-size: 2.5rem; font-weight: 800; }
-        .vs-badge { font-size: 2rem; font-weight: 900; color: #dc3545; }
-    {% endblock style %}
+    <!-- Bootstrap 5 CSS e Ícones -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    
+    <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
+    <link rel="icon" href="{% static 'img/favicon.png' %}" type="image/png">
+    
+    <style>
+        /* Estilização Geral da Fonte Garrafal Sem Serifa */
+        body {
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
 
-    {% block main %}
+        .battle-card { 
+            min-height: 240px; 
+            border-radius: 20px; 
+            border: 4px dashed #0d6efd;
+            background: #ffffff !important;
+        }
+
+        .fonte-garrafal-palavra {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 5rem; /* Exibição garrafal da palavra da arena */
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: #0d6efd;
+            word-break: break-word;
+            user-select: none;
+        }
+
+        .score-box { 
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2.8rem; 
+            font-weight: 900; 
+            text-transform: uppercase;
+        }
+
+        .vs-badge { 
+            font-family: 'Montserrat', sans-serif;
+            font-size: 2.2rem; 
+            font-weight: 900; 
+            color: #dc3545; 
+        }
+
+        .fonte-garrafal-numero {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body class="bg-dark text-white min-vh-100 d-flex flex-column justify-content-between">
+
     <header class="bg-secondary py-3 shadow">
-        <!-- Barra de Navegação Superior -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-        <div class="container">
-            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
-                <img src="{% static 'img/logo.png' %}" alt="Logo" width="240" height="140" class="d-inline-block align-text-top me-2" style="object-fit: contain;">
-            </a>
-            <div class="d-flex align-items-center text-white">
-                <span class="me-3"><i class="bi bi-person-circle me-1"></i> Prof. {{ user.first_name|default:user.username }}</span>
-                <form action="{% url 'autentica:logout' %}" method="post" class="m-0">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-light btn-sm">Sair</button>
-                </form>
-            </div>
-        </div>
-        <div class="mt-4">
-            <a href="{% url 'autentica:dashboard' %}" class="btn btn-outline-warning btn-lg w-100 fw-bold rounded-pill fs-6">
-                Painel de Controle
-            </a>
-        </div>
-    </nav>
-
         <div class="container d-flex justify-content-around align-items-center text-center">
             <div>
-                <span class="badge bg-primary fs-6">{{ aluno.nome_completo }} (Você)</span>
+                <span class="badge bg-primary fs-6 fw-bold">{{ aluno.nome_completo }} (Você)</span>
                 <div id="myScore" class="score-box text-warning">0 Pts</div>
             </div>
 
             <div>
                 <div class="vs-badge">VS</div>
-                <div class="badge bg-danger fs-5"><i class="bi bi-clock-fill me-1"></i><span id="timer">60</span>s</div>
+                <div class="badge bg-danger fs-5 fw-bold"><i class="bi bi-clock-fill me-1"></i><span id="timer">60</span>s</div>
             </div>
 
             <div>
-                <span id="oponenteNome" class="badge bg-secondary fs-6">
+                <span id="oponenteNome" class="badge bg-secondary fs-6 fw-bold">
                     {% if oponente %}{{ oponente.nome_completo }}{% else %}Aguardando Rival...{% endif %}
                 </span>
                 <div id="oponenteScore" class="score-box text-light">0 Pts</div>
             </div>
         </div>
-        <div id="modalSolicitacaoAluno" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-none d-flex align-items-center justify-content-center" style="z-index: 1060;">
-        <div class="card shadow-lg border-0 rounded-4 p-4 bg-white text-dark" style="max-width: 480px; width: 90%;">
-            <div class="card-body text-center">
-                <i class="bi bi-person-fill-gear fs-1 text-primary mb-2"></i>
-                <h3 class="fw-bold text-primary">Solicitação de Nível</h3>
-                <p class="fs-5 text-secondary">O aluno <strong id="nomeAlunoSolicitante" class="text-dark">---</strong> deseja jogar no <strong id="nivelSolicitadoAluno" class="text-primary">Nível -</strong>.</p>
-
-                <div class="d-flex justify-content-center gap-3 mt-4">
-                    <button type="button" class="btn btn-success btn-lg fw-bold w-50" onclick="responderSolicitacaoProf('aprovado')">
-                        <i class="bi bi-check-circle-fill me-1"></i> Aprovar
-                    </button>
-                    <button type="button" class="btn btn-outline-danger btn-lg fw-bold w-50" onclick="responderSolicitacaoProf('recusado')">
-                        <i class="bi bi-x-circle-fill me-1"></i> Recusar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    
     </header>
 
     <main class="container my-auto text-center">
@@ -97,14 +113,14 @@
         <div id="modalFimJogo" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-none d-flex align-items-center justify-content-center" style="z-index: 1050;">
             <div class="card shadow-lg border-0 rounded-4 text-center p-4 bg-white text-dark" style="max-width: 500px; width: 90%;">
                 <div class="card-body">
-                    <h2 id="tituloFimJogo" class="fw-bold mb-4 text-primary">FIM DA BATALHA!</h2>
+                    <h2 id="tituloFimJogo" class="fw-bold mb-4 text-primary fonte-garrafal-numero">FIM DA BATALHA!</h2>
                     
                     <div id="containerResultado" class="d-flex justify-content-center align-items-center gap-4 mb-4">
                         <!-- Preenchido via JS -->
                     </div>
 
                     <p id="mensagemResultado" class="fs-4 fw-bold mb-3"></p>
-                    <p class="text-muted small">Redirecionando para a seleção de modos em <span id="contadorSegundos" class="fw-bold text-danger">5</span>s...</p>
+                    <p class="text-muted small">Redirecionando para a seleção de modos em <span id="contadorSegundos" class="fw-bold text-danger fs-5">5</span>s...</p>
                 </div>
             </div>
         </div>
@@ -112,26 +128,36 @@
         <!-- Overlay de Contagem Regressiva 5s -->
         <div id="overlayContagem" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-90 d-flex flex-column justify-content-center align-items-center text-white" style="z-index: 9999;">
             <h2 class="fw-bold mb-3">A BATALHA VAI COMEÇAR EM:</h2>
-            <h1 id="numeroContagem" class="display-1 fw-bold text-warning" style="font-size: 8rem;">5</h1>
+            <h1 id="numeroContagem" class="display-1 fw-bold text-warning fonte-garrafal-numero" style="font-size: 9rem;">5</h1>
         </div>
 
         <!-- Arena do Jogo -->
         <div id="gameArena" class="d-none">
-            <div id="levelBadge" class="badge bg-success fs-5 mb-3">Nível 1 - Fácil</div>
+            <div id="levelBadge" class="badge bg-success fs-5 mb-3 fw-bold">Nível 1 - Fácil</div>
             
-            <div class="card battle-card bg-light text-dark shadow-lg d-flex align-items-center justify-content-center mb-4">
-                <div id="wordDisplay" class="display-2 fw-bold">PREPARE-SE</div>
+            <div class="card battle-card shadow-lg d-flex align-items-center justify-content-center mb-4 p-3">
+                <!-- Palavra da Arena em Fonte Garrafal Sem Serifa -->
+                <div id="wordDisplay" class="fonte-garrafal-palavra">PREPARE-SE</div>
             </div>
 
-            <div id="micStatus" class="fs-4 fst-italic text-info mb-3">
+            <div id="micStatus" class="fs-4 fst-italic text-info mb-3 fw-bold">
                 <i class="bi bi-mic-fill"></i> Aguardando início...
             </div>
         </div>
 
     </main>
-{% endblock main %}
 
-{% block script %}
+    <footer>
+        <div class="container text-center text-muted small py-3">
+            <p class="mb-0">© 2026 Sistema de Leitura Interativa por Voz — CISEBAM.</p>
+            <p class="mb-0">Desenvolvido por <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none">Carlos Brito</a> e <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none">Alessandra Jastes</a>.</p>
+            <p class="mb-0">Todos os direitos reservados.</p>
+            <div class="mb-0 app-version">
+                v{{ APP_VERSION }}
+            </div>
+        </div>
+    </footer>
+
     <script>
     const ALUNO_ID = {{ aluno.id }};
     const ALUNO_NOME = "{{ aluno.nome_completo }}";
@@ -217,7 +243,6 @@
             document.getElementById('waitingScreen').classList.add('d-none');
             document.getElementById('modalDesafio').classList.add('d-none');
             
-            // Usa o timestamp universal enviado para sincronizar ambos os navegadores
             let timestampInicio = data.timestamp_inicio || Date.now();
             iniciarContagemRegressiva(timestampInicio);
         }
@@ -248,7 +273,6 @@
             alert("Aguarde o oponente entrar na sala antes de aceitar!");
             return;
         }
-        // Envia o carimbo de data/hora atual para que ambas as pontas iniciem juntas
         ws.send(JSON.stringify({ 
             type: 'iniciar_contagem_5s',
             timestamp_inicio: Date.now()
@@ -282,7 +306,6 @@
                 interval5s = null;
                 overlay.classList.add('d-none');
                 
-                // Define o fim exato da partida (60 segundos após o término da contagem)
                 let tempoFinalJogo = tempoFinalContagem + 60000;
                 iniciarPartidaOficial(tempoFinalJogo);
             }
@@ -312,7 +335,6 @@
                     try { recognition.stop(); } catch(e) {}
                 }
                 
-                // Envia a pontuação final garantida do cliente antes do fechamento
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
                         type: 'atualizar_pontos',
@@ -320,7 +342,6 @@
                         pontos: myPoints
                     }));
 
-                    // O Jogador 1 envia a instrução para o banco definir o status como "finalizada"
                     if (ALUNO_ID === JOGADOR_1_ID) {
                         setTimeout(() => {
                             ws.send(JSON.stringify({ type: 'finalizar_partida' }));
@@ -343,7 +364,7 @@
 
         recognition.onresult = (e) => {
             let spoken = e.results[e.results.length - 1][0].transcript.toLowerCase().trim();
-            document.getElementById('micStatus').innerHTML = `<i class="bi bi-mic-fill text-danger"></i> Ouvi: "${spoken}"`;
+            document.getElementById('micStatus').innerHTML = `<i class="bi bi-mic-fill text-danger"></i> Ouvi: "${spoken.toUpperCase()}"`;
 
             let currentList = levelWords[currentLevel] || [];
             let target = currentList[currentIndex]?.texto?.toLowerCase().trim();
@@ -389,7 +410,8 @@
     function proximaPalavra() {
         let list = levelWords[currentLevel] || [];
         if (list.length > 0) {
-            document.getElementById('wordDisplay').innerText = list[currentIndex].texto;
+            // Garante a exibição em letras garrafais maiúsculas
+            document.getElementById('wordDisplay').innerText = list[currentIndex].texto.toUpperCase();
         }
     }
 
@@ -410,13 +432,13 @@
                 <div class="text-center">
                     <img src="${eu.foto}" class="rounded-circle border border-4 border-warning shadow" style="width: 80px; height: 80px; object-fit: cover;">
                     <p class="fw-bold mt-2 mb-0">${eu.nome}</p>
-                    <small class="badge bg-secondary">${eu.pontos} pts</small>
+                    <small class="badge bg-secondary fs-6 fw-bold">${eu.pontos} pts</small>
                 </div>
                 <span class="fs-2 fw-bold text-muted">VS</span>
                 <div class="text-center">
                     <img src="${rival.foto}" class="rounded-circle border border-4 border-warning shadow" style="width: 80px; height: 80px; object-fit: cover;">
                     <p class="fw-bold mt-2 mb-0">${rival.nome}</p>
-                    <small class="badge bg-secondary">${rival.pontos} pts</small>
+                    <small class="badge bg-secondary fs-6 fw-bold">${rival.pontos} pts</small>
                 </div>
             `;
         } else if (eu.pontos > rival.pontos) {
@@ -426,7 +448,7 @@
                 <div class="text-center">
                     <img src="${eu.foto}" class="rounded-circle border border-4 border-success shadow" style="width: 90px; height: 90px; object-fit: cover;">
                     <p class="fw-bold mt-2 mb-0 text-success">${eu.nome}</p>
-                    <small class="badge bg-success">${eu.pontos} pts</small>
+                    <small class="badge bg-success fs-6 fw-bold">${eu.pontos} pts</small>
                 </div>
             `;
         } else {
@@ -436,7 +458,7 @@
                 <div class="text-center">
                     <img src="${rival.foto}" class="rounded-circle border border-4 border-danger shadow" style="width: 90px; height: 90px; object-fit: cover;">
                     <p class="fw-bold mt-2 mb-0 text-danger">${rival.nome}</p>
-                    <small class="badge bg-danger">${rival.pontos} pts</small>
+                    <small class="badge bg-danger fs-6 fw-bold">${rival.pontos} pts</small>
                 </div>
             `;
         }
@@ -453,4 +475,5 @@
         }, 1000);
     }
 </script>
-{% endblock script %}
+</body>
+</html>

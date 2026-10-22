@@ -1,0 +1,297 @@
+{% extends 'base/basepg.html' %}
+{% load static %}
+{% block title %}Leitura de História — Palavreando{% endblock title %}
+
+{% block main %}
+<div class="container py-4" style="max-width: 750px;">
+    <!-- Título da História e Indicador de Progresso -->
+    <div class="card shadow border-0 rounded-4 p-4 mb-4 text-center">
+        <span class="badge w-auto mx-auto mb-2 px-3 py-2 fs-6 text-white fonte-garrafal" style="background-color: #6f42c1;">
+            <i class="bi bi-journal-richtext me-1"></i> Módulo de História e Compreensão
+        </span>
+        <h3 class="fw-bold text-dark fonte-garrafal" id="tituloHistoria">{{ historia.titulo }}</h3>
+        <p class="text-muted small mb-2">Leia o trecho com atenção e depois conte com suas palavras o que entendeu.</p>
+        <div class="progress mt-2" style="height: 10px;">
+            <div id="barraProgresso" class="progress-bar" style="width: 0%; background-color: #6f42c1;"></div>
+        </div>
+    </div>
+
+    <!-- Container do Bloco Atual -->
+    <div class="card shadow border-0 rounded-4 p-4 mb-4">
+    
+        <!-- Barra de Ferramentas de Áudio (Ouvir História) -->
+        <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded-3 border">
+            <span class="fw-bold text-secondary fs-6">
+                <i class="bi bi-volume-up-fill me-1" style="color: #6f42c1;"></i> Ler em voz alta:
+            </span>
+            <div class="btn-group" role="group">
+                <button type="button" id="btnOuvirTrecho" class="btn btn-sm rounded-pill px-3 fw-bold text-white" style="background-color: #6f42c1;" onclick="alternarLeituraVoz()">
+                    <i class="bi bi-play-fill me-1" id="iconeOuvir"></i> <span id="textoOuvir">Ouvir Trecho</span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm rounded-circle ms-1 d-none" id="btnPararVoz" onclick="pararSinteseVoz()" title="Parar Leitura">
+                    <i class="bi bi-stop-fill"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Ilustração do Bloco (se houver no PDF) -->
+        <div id="containerImagemBloco" class="text-center mb-3 d-none">
+            <img id="imgBloco" src="" alt="Ilustração do trecho" class="img-fluid rounded-3 shadow-sm border" style="max-height: 280px; object-fit: contain;">
+        </div>
+
+        <!-- Container do Trecho Atual -->
+        <div class="p-3 bg-white rounded-3 border mb-4 fs-5" id="containerTrecho" style="line-height: 1.8; overflow-y: auto; max-height: 35vh; white-space: pre-wrap;">
+            <!-- Trecho dos parágrafos será inserido aqui via JS -->
+        </div>
+
+        <!-- Opções de Resposta do Aluno (Texto ou Fala) -->
+        <label class="form-label fw-bold fs-6">O que você entendeu deste trecho?</label>
+        
+        <div class="d-flex gap-2 mb-3">
+            <button type="button" id="btnGravarVoz" class="btn btn-outline-danger rounded-pill fw-bold" onclick="alternarGravacaoVoz()">
+                <i class="bi bi-mic-fill me-1"></i> Falar Resposta
+            </button>
+            <span id="statusVoz" class="align-self-center text-muted small d-none">
+                <i class="bi bi-record-circle text-danger animate-blink"></i> Ouvindo... fale agora
+            </span>
+        </div>
+
+        <textarea id="respostaTexto" class="form-control rounded-3 fs-5 mb-3" rows="4" placeholder="Digite aqui ou use o botão de falar por voz..."></textarea>
+
+        <button type="button" class="btn btn-success btn-lg rounded-pill w-100 fw-bold shadow-sm" onclick="proximoBloco()">
+            Responder e Continuar <i class="bi bi-arrow-right-circle-fill ms-1"></i>
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+    const blocos = {{ blocos_json|safe }};
+    const alunoId = "{{ aluno_id }}";
+    let indiceBloco = 0;
+    let tipoRespostaUsado = "texto";
+    let tempoInicio = Date.now();
+
+    // Configurações do Sintetizador de Voz Nativo (Web Speech API)
+    const synth = window.speechSynthesis;
+    let utterance = null;
+    let lendoVoz = false;
+
+    function alternarLeituraVoz() {
+        if (!('speechSynthesis' in window)) {
+            alert("Seu navegador não suporta a funcionalidade de leitura em voz alta.");
+            return;
+        }
+
+        // Se estiver lendo, faz pausa/retomada
+        if (synth.speaking) {
+            if (synth.paused) {
+                synth.resume();
+                atualizarBotaoLeitura(true);
+            } else {
+                synth.pause();
+                atualizarBotaoLeitura(false, true);
+            }
+            return;
+        }
+
+        // Obtém o texto limpo do trecho atual
+        const textoTrecho = document.getElementById('containerTrecho').innerText;
+        if (!textoTrecho) return;
+
+        utterance = new SpeechSynthesisUtterance(textoTrecho);
+        utterance.lang = 'pt-BR';
+        utterance.rate = 0.9;  // Velocidade levemente reduzida para facilitação pedagógica
+        utterance.pitch = 1.0; // Tom de voz natural
+
+        // Eventos da leitura em voz alta
+        utterance.onstart = function () {
+            lendoVoz = true;
+            atualizarBotaoLeitura(true);
+            document.getElementById('btnPararVoz').classList.remove('d-none');
+        };
+
+        utterance.onend = function () {
+            lendoVoz = false;
+            atualizarBotaoLeitura(false);
+            document.getElementById('btnPararVoz').classList.add('d-none');
+        };
+
+        utterance.onerror = function (event) {
+            console.error("Erro na síntese de voz:", event);
+            pararSinteseVoz();
+        };
+
+        // Inicia a leitura
+        synth.speak(utterance);
+    }
+
+    function pararSinteseVoz() {
+        if (synth.speaking || synth.paused) {
+            synth.cancel();
+        }
+        lendoVoz = false;
+        atualizarBotaoLeitura(false);
+        document.getElementById('btnPararVoz').classList.add('d-none');
+    }
+
+    function atualizarBotaoLeitura(tocando, pausado = false) {
+        const btn = document.getElementById('btnOuvirTrecho');
+        const icone = document.getElementById('iconeOuvir');
+        const texto = document.getElementById('textoOuvir');
+
+        if (tocando) {
+            btn.className = "btn btn-warning btn-sm rounded-pill px-3 fw-bold";
+            icone.className = "bi bi-pause-fill me-1";
+            texto.innerText = "Pausar Leitura";
+        } else if (pausado) {
+            btn.className = "btn btn-sm rounded-pill px-3 fw-bold text-white";
+            btn.style.backgroundColor = "#6f42c1";
+            icone.className = "bi bi-play-fill me-1";
+            texto.innerText = "Continuar Leitura";
+        } else {
+            btn.className = "btn btn-sm rounded-pill px-3 fw-bold text-white";
+            btn.style.backgroundColor = "#6f42c1";
+            icone.className = "bi bi-play-fill me-1";
+            texto.innerText = "Ouvir Trecho";
+        }
+    }
+
+    // Reconhecimento de Voz (Web Speech API)
+    let recognition = null;
+    let gravando = false;
+
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.lang = 'pt-BR';
+        recognition.continuous = true;
+        recognition.interimResults = true;
+
+        recognition.onresult = (event) => {
+            let transcript = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                transcript += event.results[i][0].transcript;
+            }
+            document.getElementById('respostaTexto').value = transcript;
+            tipoRespostaUsado = "voz";
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Erro no reconhecimento de voz:", event.error);
+            pararGravacao();
+        };
+    }
+
+    function alternarGravacaoVoz() {
+        if (!recognition) {
+            alert("Seu navegador não suporta reconhecimento de voz por áudio.");
+            return;
+        }
+        if (!gravando) {
+            recognition.start();
+            gravando = true;
+            document.getElementById('btnGravarVoz').classList.replace('btn-outline-danger', 'btn-danger');
+            document.getElementById('statusVoz').classList.remove('d-none');
+        } else {
+            pararGravacao();
+        }
+    }
+
+    function pararGravacao() {
+        if (recognition && gravando) {
+            recognition.stop();
+            gravando = false;
+            document.getElementById('btnGravarVoz').classList.replace('btn-danger', 'btn-outline-danger');
+            document.getElementById('statusVoz').classList.add('d-none');
+        }
+    }
+
+    // Carrega o bloco atual e reseta os estados
+    function carregarBlocoAtual() {
+        pararSinteseVoz();
+        pararGravacao();
+
+        if (indiceBloco < blocos.length) {
+            const blocoAtual = blocos[indiceBloco];
+
+            // 1. Limpa quebras de linha soltas por palavra para formar parágrafos contínuos
+            const textoFormatado = blocoAtual.trecho_texto
+                .split('\n\n')
+                .map(p => p.split(/\s+/).join(' '))
+                .join('\n\n');
+
+            document.getElementById('containerTrecho').innerText = textoFormatado;
+
+            // 2. Atualiza a imagem se existir no bloco
+            const containerImg = document.getElementById('containerImagemBloco');
+            const imgTag = document.getElementById('imgBloco');
+
+            if (blocoAtual && blocoAtual.imagem_url) {
+                imgTag.src = blocoAtual.imagem_url;
+                containerImg.classList.remove('d-none'); // Exibe a imagem no bloco
+            } else {
+                imgTag.src = "";
+                containerImg.classList.add('d-none');    // Oculta a caixa se o bloco não tiver imagem
+            }
+
+            // 3. Reseta o campo de resposta e marcadores
+            document.getElementById('respostaTexto').value = '';
+            tipoRespostaUsado = "texto";
+            tempoInicio = Date.now();
+
+            // 4. Atualiza a barra de progresso
+            const pct = Math.round(((indiceBloco) / blocos.length) * 100);
+            document.getElementById('barraProgresso').style.width = `${pct}%`;
+        } else {
+            alert("Parabéns! Você concluiu a leitura da história!");
+            window.location.href = "{% url 'autentica:dashboard' %}";
+        }
+    }
+
+    function proximoBloco() {
+        const resposta = document.getElementById('respostaTexto').value.trim();
+        if (!resposta) {
+            alert("Por favor, escreva ou fale o que você entendeu antes de prosseguir!");
+            return;
+        }
+
+        pararGravacao();
+        pararSinteseVoz();
+        const tempoGasto = Math.floor((Date.now() - tempoInicio) / 1000);
+
+        // Envia a resposta do bloco via AJAX
+        fetch("{% url 'palavra:salvar_resposta_historia' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: JSON.stringify({
+                aluno_id: alunoId,
+                bloco_id: blocos[indiceBloco].id,
+                resposta: resposta,
+                tipo_resposta: tipoRespostaUsado,
+                tempo_gasto: tempoGasto
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'sucesso') {
+                indiceBloco++;
+                carregarBlocoAtual();
+            } else {
+                alert("Erro ao salvar resposta: " + data.mensagem);
+            }
+        })
+        .catch(err => {
+            console.error("Erro na requisição:", err);
+            alert("Ocorreu um erro ao conectar ao servidor.");
+        });
+    }
+
+    // Inicia no carregamento da página
+    document.addEventListener("DOMContentLoaded", carregarBlocoAtual);
+</script>
+{% endblock %}

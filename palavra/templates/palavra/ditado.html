@@ -1,142 +1,80 @@
-{% extends "base/basepg.html" %}
+{% extends 'base/basepg.html' %}
 {% load static %}
 
-{% block style %}
-        .card-ditado {
-            max-width: 650px;
-            margin: 0 auto;
-            border-radius: 20px;
-        }
-        .btn-ouvir {
-            width: 85px;
-            height: 85px;
-            font-size: 2rem;
-            border-radius: 50%;
-            transition: transform 0.2s;
-        }
-        .btn-ouvir:hover {
-            transform: scale(1.05);
-        }
-        .status-box {
-            min-height: 50px;
-            font-weight: 600;
-        }
-        .mic-badge {
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.3; }
-            100% { opacity: 1; }
-        }
-    {% endblock style %}
+{% block title %}Ditado — Palavreando{% endblock title %} 
 
-    {% block main %}
-<!-- Barra de Navegação Superior -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-        <div class="container">
-            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
-                <img src="{% static 'img/logo.png' %}" alt="Logo" width="240" height="140" class="d-inline-block align-text-top me-2" style="object-fit: contain;">
-            </a>
-            <div class="d-flex align-items-center text-white">
-                <span class="me-3"><i class="bi bi-person-circle me-1"></i> Prof. {{ user.first_name|default:user.username }}</span>
-                <form action="{% url 'autentica:logout' %}" method="post" class="m-0">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-light btn-sm">Sair</button>
-                </form>
-            </div>
+{% block main %}
+<div class="container" style="max-width: 700px;">
+    <!-- Cabeçalho com Infos do Aluno -->
+    <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-3 rounded-4 shadow-sm">
+        <div>
+            <span class="text-muted small">Aluno(a):</span>
+            <h4 class="fw-bold mb-0 text-dark">{{ aluno.nome_completo|default:"Aluno Desconhecido" }}</h4>
+            <small class="text-primary fw-bold">Turma: {{ aluno.turma|default:"-" }}</small>
         </div>
-    </nav>
-<div class="container py-5">
-    <div class="card card-ditado shadow-lg border-0 p-4">
-        <div class="card-body text-center">
-            
-            <h2 class="fw-bold text-primary mb-3">
-                <i class="bi bi-ear-fill me-2"></i>Jogo do Ditado
-            </h2>
+        <div class="text-end">
+            <small class="text-muted d-block">Pontuação Total</small>
+            <span id="pontuacaoTotalTopo" class="fs-4 fw-bold text-success">
+                {{ pontuacao_acumulada|default:0 }} pts
+            </span>
+        </div>
+    </div>
 
-            <!-- SELETOR DE ALUNO -->
-            <div class="mb-4 text-start bg-white p-3 rounded border">
-                <label for="aluno_id" class="form-label fw-bold text-secondary">
-                    <i class="bi bi-person-fill me-1"></i> Selecione o Aluno:
-                </label>
-                <select id="aluno_id" name="aluno_id" class="form-select form-select-lg" onchange="salvarAlunoSessao(this.value)">
-                    <option value="">-- Selecione um Aluno --</option>
-                    {% for a in alunos %}
-                        <option value="{{ a.id }}" {% if aluno_selecionado and aluno_selecionado.id == a.id %}selected{% endif %}>
-                            {{ a.nome_completo }}
-                        </option>
-                    {% endfor %}
-                </select>
+    <div class="container py-4 text-center position-relative" style="max-width: 650px;">
+        <div class="card shadow border-0 rounded-4 p-4 position-relative">
+
+            <!-- Overlay de Início para Ativação das Permissões do Navegador -->
+            <div id="overlayInicioDitado" class="position-absolute top-0 start-0 w-100 h-100 bg-white d-flex flex-column align-items-center justify-content-center rounded-4 p-3" style="z-index: 20;">
+                <i class="bi bi-volume-up-fill text-primary display-1 mb-3"></i>
+                <h3 class="fw-bold text-dark mb-2">Ditado Eletrônico</h3>
+                <p class="text-muted mb-4">Clique no botão abaixo para escutar a primeira frase.</p>
+                <button class="btn btn-primary btn-lg rounded-pill px-5 fw-bold shadow" onclick="iniciarSessaoDitado()">
+                    <i class="bi bi-play-fill me-1"></i> Iniciar Ditado
+                </button>
             </div>
 
-            {% if frase %}
-                <!-- Área de Áudio / Instruções Dinâmicas -->
-                <div class="my-3">
-                    <div class="d-flex justify-content-center gap-3 align-items-center mb-3">
-                        <button id="btnOuvir" type="button" class="btn btn-primary btn-ouvir shadow" onclick="tocarDitado()">
-                            <i class="bi bi-volume-up-fill"></i>
-                        </button>
-                    </div>
+            <!-- Badges da Atividade e Nível de Dificuldade da Frase -->
+            <div class="d-flex justify-content-center gap-2 mb-2">
+                <span class="badge bg-info text-dark px-3 py-2 fs-6">Ditado Eletrônico</span>
+                <span id="badgeNivelFrase" class="badge bg-primary px-3 py-2 fs-6">Nível 1 - Fácil</span>
+            </div>
 
-                    <div id="statusVoz" class="status-box alert alert-success d-flex align-items-center justify-content-center fs-5 fw-bold">
-                        <i class="bi bi-pencil-fill me-2"></i> Clique no botão para ouvir a frase!
-                    </div>
-                </div>
+            <h2 class="fw-bold mb-3">Ditado de Frases</h2>
+            <p class="text-muted mb-3">Escute com atenção a frase e digite exatamente o que ouviu.</p>
 
-                <!-- Formulário de Digitação do Aluno -->
-                <form id="formDitado" onsubmit="event.preventDefault(); enviarDitadoManual();>
-                    {% csrf_token %}
-                    <input type="hidden" id="frase_id" name="frase_id" value="{{ frase.id }} style="font-family: 'Montserrat','Helvetica Neue',Arial; font-size: 4rem; font-weight: 800; letter-spacing: 3px;">
-                    
-                    <div class="mb-3">
-                        <input type="text" id="texto_digitado" name="texto_digitado" class="form-control form-control-lg text-center" placeholder="Digite o que ouviu..." autocomplete="off">
-                    </div>
-                    
-                    <button type="submit" id="btnEnviar" class="btn btn-primary w-100 btn-lg rounded-pill fw-bold">
-                        <i class="bi bi-send-fill me-1"></i> Enviar Ditado
-                    </button>
-                </form>
+            <!-- Contador Regressivo de 5s -->
+            <div id="contadorContainer" class="alert alert-primary border-0 rounded-3 py-2 mb-3 d-none">
+                <span class="fw-bold fs-5"><i class="bi bi-clock-history me-2"></i> Preparar... A frase será ditada em: <span id="segundosContador" class="badge bg-danger fs-5">5</span>s</span>
+            </div>
 
-                <!-- Status do Microfone -->
-                <div id="dicaVoz" class="mt-3 text-muted small">
-                    <span id="badgeMic" class="badge bg-secondary me-1"><i class="bi bi-mic-mute-fill"></i> Microfone Inativo</span>
-                    <span id="textoMic">Clique no áudio para ouvir a frase.</span>
-                </div>
+            <!-- Controles de Áudio, Pular e Concluir -->
+            <div class="d-flex justify-content-center gap-2 mb-4 flex-wrap">
+                <button id="btnOuvir" class="btn btn-info text-white rounded-pill px-4 shadow-sm" onclick="ouvirFrase()" disabled>
+                    <i class="bi bi-volume-up-fill me-1"></i> Repetir Áudio
+                </button>
+                <button id="btnPular" class="btn btn-outline-warning rounded-pill px-3" onclick="pularFrase()" disabled>
+                    <i class="bi bi-skip-forward-fill me-1"></i> Pular
+                </button>
+                <button id="btnConcluir" class="btn btn-outline-secondary rounded-pill px-3" onclick="concluirAtividade()">
+                    <i class="bi bi-check-circle-fill me-1"></i> Concluir
+                </button>
+            </div>
 
-                <!-- Painel de Resultados -->
-                <div id="painelResultado" class="mt-4 text-start d-none">
-                    <hr>
-                    <h4 class="fw-bold text-center">Resultado do Ditado</h4>
-                    
-                    <div class="d-flex justify-content-center align-items-center my-3">
-                        <div class="text-center p-3 bg-light rounded-3 border">
-                            <span class="d-block text-muted small text-uppercase">Pontuação</span>
-                            <span id="pontuacaoDisplay" class="fs-1 fw-bold text-primary">0</span> <small>/ 100</small>
-                        </div>
-                    </div>
+            <!-- Área de Texto -->
+            <div class="form-floating mb-3">
+                <textarea class="form-control rounded-3 fs-5" id="textoDigitado" placeholder="Aguarde o áudio..." style="height: 110px;" disabled></textarea>
+                <label for="textoDigitado">Aguarde a contagem para digitar...</label>
+            </div>
 
-                    <div class="mb-3 p-3 rounded-3 bg-white border">
-                        <label class="fw-bold text-muted d-block mb-1">Sua resposta com correções:</label>
-                        <div id="resultadoHtml" class="fs-5"></div>
-                    </div>
+            <!-- Botões Principais (Enviar / Próxima) -->
+            <div id="acaoContainer">
+                <button id="btnConfirmar" class="btn btn-primary btn-lg w-100 rounded-pill fw-bold" onclick="enviarDitado()" disabled>
+                    <i class="bi bi-send-fill me-2"></i> Confirmar Resposta
+                </button>
+            </div>
 
-                    <div class="mb-3 p-3 bg-light rounded-3 border">
-                        <label class="fw-bold text-muted d-block mb-1">Texto Original Correto:</label>
-                        <div id="textoOriginal" class="fs-6 fw-bold text-dark"></div>
-                    </div>
-
-                    <a href="{% url 'palavra:ditado' %}" class="btn btn-outline-primary w-100 rounded-pill mt-2 fw-bold">
-                        <i class="bi bi-arrow-right-circle me-1"></i> Próximo Ditado
-                    </a>
-                </div>
-
-            {% else %}
-                <div class="alert alert-warning my-4">
-                    Nenhuma frase cadastrada no sistema.
-                </div>
-            {% endif %}
-
+            <!-- Feedback de Erros e Correção -->
+            <div id="resultadoDitado" class="mt-4 text-start d-none"></div>
         </div>
     </div>
 </div>
@@ -144,178 +82,264 @@
 
 {% block script %}
 <script>
-    const textoParaLer = "{{ frase.texto|escapejs }}";
-    const synth = window.speechSynthesis;
-    let vozSelecionada = null;
-    let recognizer = null;
+    window.frases = {{ frases_json|safe }};
+    window.alunoId = "{{ aluno_id|default:'' }}";
 
-    function salvarAlunoSessao(alunoId) {
-        if (alunoId) {
-            localStorage.setItem('aluno_id', alunoId);
-        }
-    }
+    let indiceFrase = 0;
+    let tempoRestante = 5;
+    let intervaloContador = null;
+    let tempoInicioFrase = Date.now();
+    let pontuacaoTotalAcumulada = parseInt("{{ pontuacao_acumulada|default:0 }}") || 0;
 
-    document.addEventListener('DOMContentLoaded', () => {
-        const selectAluno = document.getElementById('aluno_id');
-        const alunoSalvo = localStorage.getItem('aluno_id');
-        if (selectAluno && !selectAluno.value && alunoSalvo) {
-            selectAluno.value = alunoSalvo;
-        }
-        setTimeout(tocarDitado, 800);
-    });
-
-    function carregarMelhorVozBrasil() {
-        if (!('speechSynthesis' in window)) return;
-        const vozes = synth.getVoices();
-        vozSelecionada = vozes.find(v => (v.lang === 'pt-BR' || v.lang === 'pt_BR') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Luciana') || v.name.includes('Francisca')))
-                         || vozes.find(v => v.lang === 'pt-BR' || v.lang === 'pt_BR')
-                         || vozes.find(v => v.lang.includes('pt') && !v.lang.includes('PT'));
-    }
-
-    if ('speechSynthesis' in window) {
-        if (speechSynthesis.onvoiceschanged !== undefined) {
-            speechSynthesis.onvoiceschanged = carregarMelhorVozBrasil;
-        }
-        carregarMelhorVozBrasil();
-    }
-
-    function pararAudios() {
-        if (synth) synth.cancel();
-    }
-
-    function tocarDitado() {
-        if (!('speechSynthesis' in window)) {
-            alert("O seu navegador não suporta a síntese de voz.");
-            return;
-        }
-
-        pararAudios();
+    function atualizarBadgeNivel() {
+        if (!window.frases || window.frases.length === 0 || !window.frases[indiceFrase]) return;
         
-        const statusEl = document.getElementById('statusVoz');
-        statusEl.className = "status-box alert alert-primary d-flex align-items-center justify-content-center fs-5";
-        statusEl.innerHTML = `<i class="bi bi-volume-up-fill me-2"></i> Escutando a frase...`;
+        const nivel = String(window.frases[indiceFrase].nivel || "1");
+        const badge = document.getElementById('badgeNivelFrase');
+        if (!badge) return;
 
-        const mensagem = new SpeechSynthesisUtterance(textoParaLer);
-        if (vozSelecionada) mensagem.voice = vozSelecionada;
+        if (nivel === "1") {
+            badge.className = "badge bg-success px-3 py-2 fs-6";
+            badge.innerText = "Nível 1 - Fácil";
+        } else if (nivel === "2") {
+            badge.className = "badge bg-warning text-dark px-3 py-2 fs-6";
+            badge.innerText = "Nível 2 - Médio";
+        } else if (nivel === "3") {
+            badge.className = "badge bg-danger px-3 py-2 fs-6";
+            badge.innerText = "Nível 3 - Difícil";
+        } else {
+            badge.className = "badge bg-primary px-3 py-2 fs-6";
+            badge.innerText = `Nível ${nivel}`;
+        }
+    }
+
+    function ouvirFrase() {
+        if (!window.frases || window.frases.length === 0 || !window.frases[indiceFrase]) return;
         
-        mensagem.lang = 'pt-BR';
-        mensagem.rate = 0.75;
+        const fraseTexto = window.frases[indiceFrase].texto;
 
-        mensagem.onend = () => {
-            statusEl.className = "status-box alert alert-success d-flex align-items-center justify-content-center fs-5 fw-bold";
-            statusEl.innerHTML = `<i class="bi bi-pencil-fill me-2"></i> Agora é a sua vez! Escreva o que escutou.`;
-            iniciarReconhecimentoVoz();
-        };
-
-        synth.speak(mensagem);
-    }
-
-    function iniciarReconhecimentoVoz() {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) return;
-
-        if (recognizer) {
-            try { recognizer.stop(); } catch(e) {}
-        }
-
-        try {
-            recognizer = new SpeechRecognition();
-            recognizer.lang = 'pt-BR';
-            recognizer.continuous = true;
-            recognizer.interimResults = false;
-
-            recognizer.onstart = () => {
-                document.getElementById('badgeMic').className = "badge bg-danger mic-badge me-1";
-                document.getElementById('badgeMic').innerHTML = `<i class="bi bi-mic-fill"></i> Microfone Ligado`;
-                document.getElementById('textoMic').innerHTML = `Diga <strong>"Repita"</strong> para ouvir de novo ou <strong>"Próxima"</strong> para enviar!`;
-            };
-
-            recognizer.onresult = (event) => {
-                const ultimoIndice = event.results.length - 1;
-                const comando = event.results[ultimoIndice][0].transcript.trim().toLowerCase();
-
-                if (comando.includes("próxima") || comando.includes("proxima") || comando.includes("enviar") || comando.includes("pronto")) {
-                    enviarDitadoManual();
-                } else if (comando.includes("repita") || comando.includes("repetir") || comando.includes("ouvir")) {
-                    tocarDitado();
-                }
-            };
-
-            recognizer.onerror = (e) => {
-                console.log("Erro no microfone:", e.error);
-            };
-
-            recognizer.start();
-        } catch (e) {
-            console.log("Não foi possível iniciar o microfone:", e);
+        if ('speechSynthesis' in window) {
+            try {
+                window.speechSynthesis.cancel();
+                setTimeout(() => {
+                    const utterance = new SpeechSynthesisUtterance(fraseTexto);
+                    utterance.lang = 'pt-BR';
+                    utterance.rate = 0.85;
+                    window.speechSynthesis.speak(utterance);
+                }, 50);
+            } catch (e) {
+                console.warn("Aviso na síntese de voz:", e);
+            }
         }
     }
 
-    function pararReconhecimentoVoz() {
-        if (recognizer) {
-            try { recognizer.stop(); } catch(e) {}
-            recognizer = null;
-        }
+    function iniciarContagemEAudio() {
+        atualizarBadgeNivel();
+
+        // Bloqueia controles durante a contagem
+        document.getElementById('btnOuvir').disabled = true;
+        document.getElementById('btnPular').disabled = true;
+        document.getElementById('btnConfirmar').disabled = true;
+        document.getElementById('textoDigitado').disabled = true;
+        
+        const contadorContainer = document.getElementById('contadorContainer');
+        const campoSegundos = document.getElementById('segundosContador');
+        
+        tempoRestante = 5;
+        campoSegundos.innerText = tempoRestante;
+        contadorContainer.classList.remove('d-none');
+
+        if (intervaloContador) clearInterval(intervaloContador);
+        
+        intervaloContador = setInterval(() => {
+            tempoRestante--;
+            campoSegundos.innerText = tempoRestante;
+
+            if (tempoRestante <= 0) {
+                clearInterval(intervaloContador);
+                intervaloContador = null;
+                contadorContainer.classList.add('d-none');
+                
+                desbloquearInterface();
+                tempoInicioFrase = Date.now();
+                ouvirFrase();
+            }
+        }, 1000);
     }
 
-    function enviarDitadoManual() {
-        const alunoId = document.getElementById('aluno_id').value;
-        if (!alunoId) {
-            alert("Por favor, selecione um aluno antes de enviar o ditado!");
-            document.getElementById('aluno_id').focus();
+    function desbloquearInterface() {
+        document.getElementById('btnOuvir').disabled = false;
+        document.getElementById('btnPular').disabled = false;
+        document.getElementById('btnConfirmar').disabled = false;
+        
+        const inputTexto = document.getElementById('textoDigitado');
+        inputTexto.disabled = false;
+        inputTexto.focus();
+    }
+
+    function iniciarSessaoDitado() {
+        const overlay = document.getElementById('overlayInicioDitado');
+        if (overlay) overlay.classList.add('d-none');
+
+        if (!window.frases || window.frases.length === 0) {
+            alert("Nenhuma frase encontrada para este ditado.");
             return;
         }
 
-        const campoTexto = document.getElementById('texto_digitado');
-        if (!campoTexto.value.trim()) {
-            alert("Por favor, escreva o que escutou antes de enviar!");
-            campoTexto.focus();
+        iniciarContagemEAudio();
+    }
+
+    function pularFrase() {
+        if (confirm("Deseja pular esta frase?")) {
+            const tempoGasto = Math.floor((Date.now() - tempoInicioFrase) / 1000);
+            salvarEAvancar({
+                frase_id: window.frases[indiceFrase].id,
+                texto_digitado: "",
+                aluno_id: window.alunoId,
+                poulou: true,
+                tempo_gasto: tempoGasto
+            });
+        }
+    }
+
+    function concluirAtividade() {
+        if (confirm("Deseja concluir o ditado e voltar ao Dashboard?")) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+            window.location.href = "{% url 'autentica:dashboard' %}";
+        }
+    }
+
+    function enviarDitado() {
+        const texto = document.getElementById('textoDigitado').value;
+        if (!texto.trim()) {
+            alert("Por favor, digite a frase antes de enviar!");
             return;
         }
 
-        pararAudios();
-        pararReconhecimentoVoz();
+        const tempoGasto = Math.floor((Date.now() - tempoInicioFrase) / 1000);
+        salvarEAvancar({
+            frase_id: window.frases[indiceFrase].id,
+            texto_digitado: texto,
+            aluno_id: window.alunoId,
+            poulou: false,
+            tempo_gasto: tempoGasto
+        });
+    }
 
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        const fraseId = document.getElementById('frase_id').value;
+    function salvarEAvancar(payload) {
+        document.getElementById('btnOuvir').disabled = true;
+        document.getElementById('btnPular').disabled = true;
+        document.getElementById('btnConfirmar').disabled = true;
+        document.getElementById('textoDigitado').disabled = true;
 
-        const formData = new FormData();
-        formData.append('csrfmiddlewaretoken', csrfToken);
-        formData.append('frase_id', fraseId);
-        formData.append('texto_digitado', campoTexto.value);
-        formData.append('aluno_id', alunoId);
-
-        fetch("{% url 'palavra:ditado' %}", {
+        fetch("{% url 'palavra:salvar_resultado_ditado' %}", {
             method: "POST",
             headers: {
-                "X-CSRFToken": csrfToken
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"
             },
-            body: formData
+            body: JSON.stringify(payload)
         })
         .then(res => res.json())
         .then(data => {
-            if (data.sucesso) {
-                document.getElementById('pontuacaoDisplay').innerText = data.pontuacao;
-                document.getElementById('resultadoHtml').innerHTML = data.resultado_html;
-                document.getElementById('textoOriginal').innerText = data.texto_original;
-
-                document.getElementById('painelResultado').classList.remove('d-none');
-                document.getElementById('btnEnviar').disabled = true;
-                campoTexto.readOnly = true;
-
-                document.getElementById('statusVoz').className = "status-box alert alert-info d-flex align-items-center justify-content-center fs-5";
-                document.getElementById('statusVoz').innerHTML = `<i class="bi bi-star-fill me-2"></i> Ditado concluído para ${data.aluno_nome}!`;
-                
-                document.getElementById('badgeMic').className = "badge bg-secondary me-1";
-                document.getElementById('badgeMic').innerHTML = `<i class="bi bi-mic-mute-fill"></i> Microfone Desativado`;
+            if (data.status === 'sucesso') {
+                exibirResultado(data);
             } else {
-                alert(data.mensagem || "Ocorreu um erro ao processar o ditado.");
+                alert("Erro: " + data.mensagem);
+                desbloquearInterface();
             }
         })
         .catch(err => {
-            console.error("Erro ao enviar:", err);
-            alert("Ocorreu um erro de conexão ao enviar o ditado.");
+            console.error("Erro no envio:", err);
+            desbloquearInterface();
         });
     }
+
+    function exibirResultado(data) {
+        if (data.pontuacao !== undefined) {
+            pontuacaoTotalAcumulada += parseInt(data.pontuacao);
+            const elementoTopo = document.getElementById('pontuacaoTotalTopo');
+            if (elementoTopo) {
+                elementoTopo.innerText = `${pontuacaoTotalAcumulada} pts`;
+            }
+        }
+
+        const divRes = document.getElementById('resultadoDitado');
+        divRes.classList.remove('d-none');
+
+        let bgAlert = 'alert-danger';
+        if (data.pontuacao === 100) bgAlert = 'alert-success';
+        else if (data.pontuacao >= 50) bgAlert = 'alert-warning';
+
+        let html = `<div class="alert ${bgAlert} border shadow-sm rounded-4 p-4 text-start mt-3">`;
+        html += `<div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">`;
+        html += `  <h5 class="fw-bold m-0"><i class="bi bi-trophy-fill me-2 text-warning"></i> Pontuação Conquistada</h5>`;
+        html += `  <span class="fs-4 fw-bold px-3 py-1 rounded-pill bg-white text-dark shadow-sm">${data.pontuacao} / 100 pts</span>`;
+        html += `</div>`;
+
+        html += `<div class="mb-3">`;
+        html += `  <small class="text-uppercase fw-bold text-muted d-block mb-1">Frase Correta:</small>`;
+        html += `  <div class="p-2 bg-white rounded-3 border fs-5 fw-semibold text-dark">"${data.texto_correto}"</div>`;
+        html += `</div>`;
+
+        html += `<div class="mb-3">`;
+        html += `  <small class="text-uppercase fw-bold text-muted d-block mb-1">Sua Resposta (Análise de Erros):</small>`;
+        html += `  <div class="p-2 bg-white rounded-3 border fs-5">`;
+        
+        if (data.relatorio && data.relatorio.length > 0) {
+            data.relatorio.forEach(item => {
+                if (item.status === 'correto') {
+                    html += `<span class="badge bg-success me-1 px-2 py-1">${item.digitado} <i class="bi bi-check"></i></span> `;
+                } else if (item.status === 'ortografia') {
+                    html += `<span class="badge bg-warning text-dark me-1 px-2 py-1" title="Esperado: ${item.original}">${item.digitado} <i class="bi bi-exclamation-triangle"></i></span> `;
+                } else if (item.status === 'omissao') {
+                    html += `<span class="badge bg-danger me-1 px-2 py-1" title="Faltou digitar">[Faltou: ${item.original}]</span> `;
+                } else {
+                    html += `<span class="badge bg-danger me-1 px-2 py-1" title="Esperado: ${item.original}">${item.digitado} <i class="bi bi-x"></i></span> `;
+                }
+            });
+        } else {
+            html += `<span class="text-muted italic">Nenhuma palavra enviada.</span>`;
+        }
+        
+        html += `  </div>`;
+        html += `</div>`;
+
+        html += `<div class="d-flex flex-wrap gap-2 pt-2 border-top small text-muted">`;
+        html += `  <span><i class="bi bi-circle-fill text-success"></i> Correto</span>`;
+        html += `  <span><i class="bi bi-circle-fill text-warning"></i> Erro Leve</span>`;
+        html += `  <span><i class="bi bi-circle-fill text-danger"></i> Erro/Omissão</span>`;
+        html += `</div>`;
+        html += `</div>`;
+
+        divRes.innerHTML = html;
+
+        document.getElementById('acaoContainer').innerHTML = `
+            <button id="btnProxima" class="btn btn-success btn-lg w-100 rounded-pill fw-bold shadow-sm" onclick="proximaFrase()">
+                Próxima Frase <i class="bi bi-arrow-right-circle-fill ms-2"></i>
+            </button>
+        `;
+    }
+
+    function proximaFrase() {
+        document.getElementById('resultadoDitado').classList.add('d-none');
+        document.getElementById('textoDigitado').value = '';
+
+        document.getElementById('acaoContainer').innerHTML = `
+            <button id="btnConfirmar" class="btn btn-primary btn-lg w-100 rounded-pill fw-bold" onclick="enviarDitado()" disabled>
+                <i class="bi bi-send-fill me-2"></i> Confirmar Resposta
+            </button>
+        `;
+
+        if (indiceFrase < window.frases.length - 1) {
+            indiceFrase++;
+            iniciarContagemEAudio();
+        } else {
+            alert("Parabéns! Você concluiu todas as frases do ditado!");
+            window.location.href = "{% url 'autentica:dashboard' %}";
+        }
+    }
 </script>
- {% endblock script %}
+{% endblock script %}

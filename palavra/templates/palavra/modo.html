@@ -1,7 +1,10 @@
-{% extends "base/basepg.html" %}
+{% extends 'base/basepg.html' %}
 {% load static %}
 
+{% block title %}Modo de Jogo{% endblock %}
+
 {% block style %}
+    <style>
         .avatar-container {
             position: relative;
             display: inline-block;
@@ -49,32 +52,22 @@
             border-top: 2px solid #e0e0e0;
             margin: 2rem 0;
         }
-    {% endblock style %}
+    </style>
+{% endblock %}
+
 {% block main %}
-<header class="bg-primary text-white py-3">
-         <!-- Barra de Navegação Superior -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-        <div class="container">
-            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
-                <img src="{% static 'img/logo.png' %}" alt="Logo" width="240" height="140" class="d-inline-block align-text-top me-2" style="object-fit: contain;">
-            </a>
-            <h1 class="h3 mb-0">Leitura Interativa por Voz</h1>
-                <span class="me-3"><i class="bi bi-person-circle me-1"></i> Prof. {{ user.first_name|default:user.username }}</span>
-                <form action="{% url 'autentica:logout' %}" method="post" class="m-0">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-light btn-sm">Sair</button>
-                </form>
-        </div>
-    </nav>
-        <div class="d-flex">
-                <a href="{% url 'base:home' %}" class="btn btn-outline-light btn-sm rounded-pill px-3">
-                    <i class="bi bi-arrow-left me-1"></i> Voltar ao Início
-                </a>
-            
-                <a href="{% url 'autentica:dashboard' %}" class="btn btn-outline-light btn-sm rounded-pill px-3">
-                    <i class="bi bi-arrow-left-circle me-1"></i> Voltar ao Dashboard
-                </a>
+    <header class="bg-primary text-white py-3 shadow-sm mb-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+                        <img src="{% static 'img/logo.png' %}" alt="Logo" width="200" height="auto" class="d-inline-block align-text-top me-2" style="object-fit: contain;">
+                    </a>
+                <h2 class="h4 mb-0 fw-bold fonte-garrafal text-white">Modos de Aprendizado</h2>
             </div>
+            <a href="{% url 'autentica:dashboard' %}" class="btn btn-light text-primary fw-bold rounded-pill">
+                <i class="bi bi-arrow-left-circle-fill me-1"></i> Voltar ao Dashboard
+            </a>
+        </div>
     </header>
     {% csrf_token %}
 
@@ -96,7 +89,7 @@
                 <div class="card h-100 border-0 shadow-sm hover-card text-center p-3">
                     <div class="card-body d-flex flex-column align-items-center">
                         <div class="avatar-container mb-3">
-                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" target="_blank" class="text-decoration-none">
+                            <a href="#" class="text-decoration-none">
                                 <img src="{% static 'img/modo_60s.png' %}" alt="Modo 60s" class="avatar-img">
                             </a>
                             <div class="avatar-badge bg-primary text-white">
@@ -108,7 +101,7 @@
                         <p class="text-muted flex-grow-1">
                             Leia o máximo de palavras que conseguir antes que o cronômetro de 1 minuto termine!
                         </p>
-                        <a href="{% url 'palavra:leitura_escrita' %}?aluno_id={% if aluno %}{{ aluno.id }}{% else %}{{ request.GET.aluno_id }}{% endif %}&modo=60s" class="btn btn-primary btn-lg rounded-pill w-100 fw-bold">
+                        <a href="{% url 'palavra:l60s' %}?aluno_id={% if aluno %}{{ aluno.id }}{% else %}{{ request.GET.aluno_id }}{% endif %}&modo=60s" class="btn btn-primary btn-lg rounded-pill w-100 fw-bold">
                             <i class="bi bi-play-fill me-1"></i> Jogar 60s
                         </a>
                     </div>
@@ -120,7 +113,7 @@
                 <div class="card h-100 border-0 shadow-sm hover-card text-center p-3">
                     <div class="card-body d-flex flex-column align-items-center">
                         <div class="avatar-container mb-3">
-                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" target="_blank" class="text-decoration-none">
+                            <a href="#" class="text-decoration-none">
                                 <img src="{% static 'img/modo_vs.png' %}" alt="Modo Batalha" class="avatar-img">
                             </a>
                             <div class="avatar-badge bg-danger text-white">
@@ -144,7 +137,7 @@
                 <div class="card h-100 border-0 shadow-sm hover-card text-center p-3">
                     <div class="card-body d-flex flex-column align-items-center">
                         <div class="avatar-container mb-3">
-                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" target="_blank" class="text-decoration-none">
+                            <a href="#" class="text-decoration-none">
                                 <img src="{% static 'img/modo_up.png' %}" alt="Selecione o Nível" class="avatar-img">
                             </a>
                             <div class="avatar-badge bg-warning text-dark">
@@ -168,7 +161,7 @@
                 <div class="card h-100 border-0 shadow-sm hover-card text-center p-3">
                     <div class="card-body d-flex flex-column align-items-center">
                         <div class="avatar-container mb-3">
-                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" target="_blank" class="text-decoration-none">
+                            <a href="#" class="text-decoration-none">
                                 <img src="{% static 'img/modo_ouvir_falar.png' %}" alt="Ouvir e Falar" class="avatar-img">
                             </a>
                             <div class="avatar-badge bg-success text-white">
@@ -192,7 +185,7 @@
                 <div class="card h-100 border-0 shadow-sm hover-card text-center p-3">
                     <div class="card-body d-flex flex-column align-items-center">
                         <div class="avatar-container mb-3">
-                            <a href="https://sites.google.com/seduc.pa.gov.br/ciseb/in%C3%ADcio" target="_blank" class="text-decoration-none">
+                            <a href="#" class="text-decoration-none">
                                 <img src="{% static 'img/modo_ditado.png' %}" alt="Ditado Interativo" class="avatar-img">
                             </a>
                             <div class="avatar-badge bg-info text-white">
@@ -211,11 +204,45 @@
                 </div>
             </div>
 
+            <!-- CARD 6: História -->
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm hover-card text-center p-3" style="border-top: 4px solid #6f42c1 !important;">
+                    <div class="card-body d-flex flex-column align-items-center">
+                        <div class="avatar-container mb-3">
+                            <a href="#" class="text-decoration-none">
+                                <img src="{% static 'img/modo_historia.png' %}" alt="História" class="avatar-img">
+                            </a>
+                            <div class="avatar-badge text-white" style="background-color: #6f42c1;">
+                                <i class="bi bi-journal-richtext"></i>
+                            </div>
+                        </div>
+                        
+                        <h3 class="fw-bold text-dark">História e Imaginação</h3>
+                        
+                        <span class="badge mb-3 px-3 py-2 fw-semibold" style="background-color: #e2d9f3; color: #593196;">
+                            <i class="bi bi-stars me-1"></i> Compreensão Ativa
+                        </span>
+                        
+                        <p class="text-muted flex-grow-1">
+                            Leia trecho a trecho da história e use sua imaginação para contar com suas palavras o que você entendeu!
+                        </p>
+                        
+                        <button type="button" 
+                                class="btn btn-lg text-white rounded-pill w-100 fw-bold shadow-sm" 
+                                style="background: linear-gradient(135deg, #6f42c1 0%, #8951e5 100%); border: none;"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#modalHistoria">
+                            <i class="bi bi-book-half me-1"></i> Entrar no Mundo da História
+                        </button>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <hr class="linha">
         <div class="text-center my-4">
-            <a href="{% url 'autentica:dashboard' %}" class="btn btn-secondary btn-lg rounded-pill px-4">
+            <a href="{% url 'palavra:selecionar_aluno' %}" class="btn btn-secondary btn-lg rounded-pill px-4">
                 <i class="bi bi-arrow-left me-1"></i> Voltar ao Início
             </a>
         </div>
@@ -315,16 +342,52 @@
             </div>
         </div>
     </div>
-{% endblock main %}
-    
-{% block script %}
 
+    <!-- Modal 4: História e Imaginação -->
+    <div class="modal fade" id="modalHistoria" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 shadow">
+                <div class="modal-header border-0 text-white" style="background: linear-gradient(135deg, #6f42c1 0%, #8951e5 100%);">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-book-half me-2"></i>História e Imaginação</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body p-4 text-center">
+                    <p class="fs-6 text-muted mb-1">Aluno(a): <strong class="text-dark">{% if aluno %}{{ aluno.nome_completo }}{% elif aluno_ativo %}{{ aluno_ativo.nome_completo }}{% else %}Abelinha Priscila{% endif %}</strong></p>
+                    <p class="fs-6 text-muted mb-3">Escolha o nível da história para começar a leitura e compreensão:</p>
+
+                    <!-- Seleção do Nível -->
+                    <div class="mb-3 text-start">
+                        <label class="form-label fw-bold">Selecione o Nível de Leitura:</label>
+                        <select id="selectNivelHistoria" class="form-select form-select-lg" onchange="carregarHistoriasDoNivel()">
+                            <option value="1" selected>Nível 1 - Histórias Curtas</option>
+                            <option value="2">Nível 2 - Histórias Médias</option>
+                            <option value="3">Nível 3 - Histórias Desafio</option>
+                        </select>
+                    </div>
+
+                    <!-- Seleção da História Específica (Carregada via AJAX) -->
+                    <div class="mb-4 text-start">
+                        <label class="form-label fw-bold">Selecione a História:</label>
+                        <select id="selectHistoriaCadastrada" class="form-select form-select-lg">
+                            <option value="">Carregando histórias...</option>
+                        </select>
+                    </div>
+
+                    <button type="button" class="btn btn-lg text-white rounded-pill w-100 fw-bold shadow-sm" style="background-color: #6f42c1;" onclick="iniciarHistoria()">
+                        <i class="bi bi-journal-check me-1"></i> Abrir História
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+  {% endblock %}
+  {% block script %}
     <!-- Scripts Bootstrap -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
         const ALUNO_ID = "{% if aluno %}{{ aluno.id }}{% else %}{{ request.GET.aluno_id }}{% endif %}";
-        const URL_LEITURA_ESCRITA = "{% url 'palavra:leitura_escrita' %}";
+        const URL_LEITURA_ESCRITA = "{% url 'palavra:ouvir_falar' %}";
         const URL_DITADO = "{% url 'palavra:ditado' %}";
         let solicitacaoIdAtual = null;
         let intervalChecagemAluno = null;
@@ -392,5 +455,48 @@
             const nivel = document.getElementById('selectNivelDitado').value;
             window.location.href = `${URL_DITADO}?aluno_id=${ALUNO_ID}&nivel=${nivel}`;
         }
+
+        // Carrega as histórias dinamicamente assim que o nível é alterado ou o modal é aberto
+        function carregarHistoriasDoNivel() {
+            const nivel = document.getElementById('selectNivelHistoria').value;
+            const selectHistoria = document.getElementById('selectHistoriaCadastrada');
+
+            selectHistoria.innerHTML = '<option value="">Buscando histórias...</option>';
+
+            fetch(`/palavra/api/historias/por-nivel/?nivel=${nivel}`)
+                .then(res => res.json())
+                .then(data => {
+                    selectHistoria.innerHTML = '';
+                    if (data.status === 'sucesso' && data.historias.length > 0) {
+                        data.historias.forEach(h => {
+                            const option = document.createElement('option');
+                            option.value = h.id;
+                            option.textContent = h.titulo;
+                            selectHistoria.appendChild(option);
+                        });
+                    } else {
+                        selectHistoria.innerHTML = '<option value="">Nenhuma história neste nível</option>';
+                    }
+                })
+                .catch(err => {
+                    console.error("Erro ao buscar histórias:", err);
+                    selectHistoria.innerHTML = '<option value="">Erro ao carregar histórias</option>';
+                });
+        }
+
+        function iniciarHistoria() {
+            const nivel = document.getElementById('selectNivelHistoria').value;
+            const historiaId = document.getElementById('selectHistoriaCadastrada').value;
+
+            if (!historiaId) {
+                alert("Por favor, selecione uma história antes de continuar.");
+                return;
+            }
+
+            window.location.href = `/palavra/historia/leitura/${ALUNO_ID}/?nivel=${nivel}&historia_id=${historiaId}`;
+        }
+
+        // Carrega as histórias do nível 1 assim que o modal for aberto
+        document.getElementById('modalHistoria').addEventListener('shown.bs.modal', carregarHistoriasDoNivel);
     </script>
-    {% endblock script %}
+{% endblock %}

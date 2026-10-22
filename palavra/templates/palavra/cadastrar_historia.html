@@ -1,0 +1,284 @@
+{% extends 'base/basepg.html' %}
+{% load static %}
+
+{% block title %}Cadastrar História — Palavreando{% endblock title %}
+
+{% block main %}
+<!-- Cabeçalho Superior do Módulo -->
+<header class="bg-primary text-white py-3 shadow-sm mb-4">
+    <div class="container d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+                    <img src="{% static 'img/logo.png' %}" alt="Logo" width="200" height="auto" class="d-inline-block align-text-top me-2" style="object-fit: contain;">
+                </a>
+            <h2 class="h4 mb-0 fw-bold fonte-garrafal text-white">Gerenciar Histórias</h2>
+        </div>
+        <a href="{% url 'autentica:dashboard' %}" class="btn btn-light text-primary fw-bold rounded-pill">
+            <i class="bi bi-arrow-left-circle-fill me-1"></i> Voltar ao Dashboard
+        </a>
+    </div>
+</header>
+
+<div class="container py-2">
+    <div class="row g-4">
+        
+        <!-- Formulário Dinâmico de Cadastro de História por Blocos -->
+        <div class="col-lg-7">
+            <div class="card shadow border-0 rounded-4 overflow-hidden">
+                <div class="card-header text-white p-4" style="background-color: #6f42c1;">
+                    <h4 class="fw-bold mb-1 fonte-garrafal">
+                        <i class="bi bi-journal-plus me-2"></i>Nova História
+                    </h4>
+                    <p class="mb-0 text-white-50 small">Insira o título e adicione os blocos de texto associando imagens individuais quando houver.</p>
+                </div>
+                
+                <div class="card-body p-4 bg-white">
+                    <form id="formHistoria" action="{% url 'palavra:cadastrar_historia' %}" method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- 1. Título e Nível -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-8">
+                                <label for="titulo" class="form-label fw-bold text-dark fs-6">Título da História:</label>
+                                <input type="text" id="titulo" name="titulo" class="form-control form-control-lg rounded-3 fs-6" placeholder="Ex: Pepo o Urso" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="nivel" class="form-label fw-bold text-dark fs-6">Nível de Dificuldade:</label>
+                                <select id="nivel" name="nivel" class="form-select form-select-lg rounded-3 fs-6" required>
+                                    <option value="1">Nível 1 — Curta / Fácil</option>
+                                    <option value="2">Nível 2 — Média / Intermediária</option>
+                                    <option value="3">Nível 3 — Longa / Avançada</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <hr class="my-4 text-muted">
+
+                        <!-- 2. Container dos Blocos Dinâmicos -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-dark mb-0 fonte-garrafal" style="font-size: 1.1rem;">
+                                <i class="bi bi-layers-fill text-primary me-2"></i>Blocos de Leitura
+                            </h5>
+                            <button type="button" class="btn btn-outline-primary btn-sm rounded-pill fw-bold" onclick="adicionarBloco()">
+                                <i class="bi bi-plus-circle-fill me-1"></i> Adicionar Bloco
+                            </button>
+                        </div>
+
+                        <div id="containerBlocos">
+                            <!-- Bloco 1 (Inicial Fixado) -->
+                            <div class="card border rounded-4 p-3 mb-3 bg-light item-bloco" data-bloco-index="1">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge bg-secondary rounded-pill px-3 py-2 fw-bold numero-bloco">Bloco 1</span>
+                                    <button type="button" class="btn btn-link text-danger btn-sm p-0 text-decoration-none btn-remover-bloco d-none" onclick="removerBloco(this)">
+                                        <i class="bi bi-trash-fill me-1"></i> Remover
+                                    </button>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold small text-muted">Trecho de Texto (Até 2 parágrafos):</label>
+                                    <textarea name="trecho_texto_1" class="form-control rounded-3" rows="3" placeholder="Digite o trecho da história para este bloco..." required></textarea>
+                                </div>
+
+                                <div>
+                                    <label class="form-label fw-semibold small text-muted">Imagem do Bloco (Opcional):</label>
+                                    <input type="file" name="imagem_bloco_1" class="form-control rounded-3" accept="image/*" onchange="previsualizarImagem(this)">
+                                    <div class="mt-2 text-center d-none preview-container">
+                                        <img src="" class="img-thumbnail rounded-3 shadow-sm" style="max-height: 120px; object-fit: contain;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Barra de Ações (Salvar, Limpar e Cancelar) -->
+                        <div class="d-flex flex-wrap gap-2 mt-4 pt-2 border-top">
+                            <button type="submit" class="btn btn-success btn-lg fw-bold rounded-pill px-4 shadow-sm flex-grow-1">
+                                <i class="bi bi-check-circle-fill me-1"></i> Salvar História
+                            </button>
+                            
+                            <button type="button" class="btn btn-outline-secondary btn-lg fw-bold rounded-pill px-4" onclick="limparCampos()">
+                                <i class="bi bi-eraser-fill me-1"></i> Limpar Campos
+                            </button>
+                            
+                            <a href="{% url 'autentica:dashboard' %}" class="btn btn-outline-danger btn-lg fw-bold rounded-pill px-4">
+                                <i class="bi bi-x-circle-fill me-1"></i> Cancelar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Histórias Cadastradas -->
+        <div class="col-lg-5">
+            <div class="card shadow border-0 rounded-4 overflow-hidden h-100">
+                <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+                    <h5 class="fw-bold text-dark mb-0">
+                        <i class="bi bi-collection-play-fill text-primary me-2"></i>Histórias Cadastradas
+                    </h5>
+                    <span class="badge bg-secondary rounded-pill">{{ historias|length }} Cadastrada(s)</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Título</th>
+                                    <th class="text-center">Nível</th>
+                                    <th class="text-center">Blocos</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for h in historias %}
+                                <tr>
+                                    <td class="fw-bold text-dark">{{ h.titulo }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info text-dark">Nível {{ h.nivel }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-light text-dark border">{{ h.blocos.count }} bloco(s)</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <form action="{% url 'palavra:excluir_historia' h.id %}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir a história {{ h.titulo }}?');">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-circle" title="Excluir História">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted small">
+                                        Nenhuma história cadastrada até o momento.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block script %}
+<script>
+    let contadorBlocos = 1;
+
+    // Adiciona dinamicamente um novo cartão de bloco
+    function adicionarBloco() {
+        contadorBlocos++;
+        const container = document.getElementById('containerBlocos');
+
+        const novoBloco = document.createElement('div');
+        novoBloco.className = 'card border rounded-4 p-3 mb-3 bg-light item-bloco';
+        novoBloco.setAttribute('data-bloco-index', contadorBlocos);
+
+        novoBloco.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-secondary rounded-pill px-3 py-2 fw-bold numero-bloco">Bloco ${contadorBlocos}</span>
+                <button type="button" class="btn btn-link text-danger btn-sm p-0 text-decoration-none btn-remover-bloco" onclick="removerBloco(this)">
+                    <i class="bi bi-trash-fill me-1"></i> Remover
+                </button>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold small text-muted">Trecho de Texto (Até 2 parágrafos):</label>
+                <textarea name="trecho_texto_${contadorBlocos}" class="form-control rounded-3" rows="3" placeholder="Digite o trecho da história para este bloco..." required></textarea>
+            </div>
+
+            <div>
+                <label class="form-label fw-semibold small text-muted">Imagem do Bloco (Opcional):</label>
+                <input type="file" name="imagem_bloco_${contadorBlocos}" class="form-control rounded-3" accept="image/*" onchange="previsualizarImagem(this)">
+                <div class="mt-2 text-center d-none preview-container">
+                    <img src="" class="img-thumbnail rounded-3 shadow-sm" style="max-height: 120px; object-fit: contain;">
+                </div>
+            </div>
+        `;
+
+        container.appendChild(novoBloco);
+        atualizarBotoesRemover();
+    }
+
+    // Remove um bloco e renumera a sequência
+    function removerBloco(botao) {
+        const bloco = botao.closest('.item-bloco');
+        bloco.remove();
+        atualizarNumeracaoBlocos();
+        atualizarBotoesRemover();
+    }
+
+    // Mantém a numeração ordinal em ordem crescente (Bloco 1, Bloco 2, etc.)
+    function atualizarNumeracaoBlocos() {
+        const blocos = document.querySelectorAll('.item-bloco');
+        contadorBlocos = blocos.length;
+
+        blocos.forEach((bloco, index) => {
+            const num = index + 1;
+            bloco.setAttribute('data-bloco-index', num);
+            bloco.querySelector('.numero-bloco').innerText = `Bloco ${num}`;
+            
+            const txt = bloco.querySelector('textarea');
+            if (txt) txt.name = `trecho_texto_${num}`;
+
+            const file = bloco.querySelector('input[type="file"]');
+            if (file) file.name = `imagem_bloco_${num}`;
+        });
+    }
+
+    // Exibe o botão de remover apenas se houver mais de 1 bloco
+    function atualizarBotoesRemover() {
+        const blocos = document.querySelectorAll('.item-bloco');
+        blocos.forEach(bloco => {
+            const btnRemover = bloco.querySelector('.btn-remover-bloco');
+            if (btnRemover) {
+                if (blocos.length > 1) {
+                    btnRemover.classList.remove('d-none');
+                } else {
+                    btnRemover.classList.add('d-none');
+                }
+            }
+        });
+    }
+
+    // Pré-visualização da imagem selecionada no input do bloco
+    function previsualizarImagem(input) {
+        const containerPreview = input.parentNode.querySelector('.preview-container');
+        const img = containerPreview.querySelector('img');
+
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                img.src = e.target.result;
+                containerPreview.classList.remove('d-none');
+            };
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            img.src = '';
+            containerPreview.classList.add('d-none');
+        }
+    }
+
+    // Limpa todos os campos do formulário
+    function limparCampos() {
+        if (confirm("Deseja realmente limpar todos os campos digitados?")) {
+            document.getElementById('formHistoria').reset();
+            
+            // Oculta pré-visualizações de imagens
+            document.querySelectorAll('.preview-container').forEach(div => div.classList.add('d-none'));
+
+            // Remove blocos extras mantendo apenas o Bloco 1
+            const blocos = document.querySelectorAll('.item-bloco');
+            for (let i = 1; i < blocos.length; i++) {
+                blocos[i].remove();
+            }
+            atualizarNumeracaoBlocos();
+            atualizarBotoesRemover();
+        }
+    }
+</script>
+{% endblock %}

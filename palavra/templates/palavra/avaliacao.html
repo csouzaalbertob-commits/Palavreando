@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
+    <link rel="icon" href="{% static 'img/favicon.png' %}" type="image/png">
+    <title>Avaliação de Fluência Leitora</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f4f6f8; }
+        .header { display: flex; justify-content: space-between; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .main-card { background: white; margin-top: 20px; border-radius: 8px; padding: 40px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .palavra-display { font-size: 72px; font-weight: bold; margin: 60px 0; color: #333; }
+        .timer { font-size: 32px; font-weight: bold; color: #2e7d32; }
+        .btn { padding: 12px 24px; font-size: 16px; border: none; border-radius: 6px; cursor: pointer; margin: 5px; font-weight: bold; }
+        .btn-start { background-color: #2e7d32; color: white; }
+        .btn-correct { background-color: #4caf50; color: white; }
+        .btn-replace { background-color: #f44336; color: white; }
+        .btn-autocorrect { background-color: #ff9800; color: white; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div>
+            <strong id="aluno-nome">Aluno ID: {{ aluno_id }}</strong><br>
+            <small>Professora ID: {{ prof_id }}</small>
+        </div>
+        <div>
+            <small>TEMPO</small>
+            <div class="timer" id="timer">01:00</div>
+        </div>
+        <div>
+            <small>PALAVRAS LIDAS</small>
+            <div class="timer" id="contador-palavras">0</div>
+        </div>
+    </div>
+
+    <div class="main-card">
+        <div class="palavra-display" id="palavra-box">Pressione Iniciar</div>
+
+        <!-- Botão Único Inicial -->
+        <button id="btn-iniciar" class="btn btn-start" onclick="iniciarEtapa(1)">Iniciar Primeira Etapa</button>
+
+        <!-- Painel de Análise (Apenas para a Professora/Avaliador) -->
+        <div id="painel-analise" class="controls" style="display: none;">
+            <button class="btn btn-correct" onclick="registrarEAvançar('CORRETO')">✓ Correto</button>
+            <button class="btn btn-replace" onclick="registrarEAvançar('TROCA')">✕ Substituiu / Omitiu</button>
+            <button class="btn btn-autocorrect" onclick="registrarEAvançar('AUTOCORRECAO')">↻ Autocorrigiu</button>
+        </div>
+    </div>
+    <footer>
+        <div class="container text-center text-muted small">
+            <p class="mb-0">© 2026 Sistema de Leitura Interativa por Voz — CISEBAM.</p>
+            <p class="mb-0">Desenvolvido por <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none">Carlos Brito</a> e <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none">Alessandra Jastes</a>.</p>
+            <p class="mb-0">Todos os direitos reservados.</p>
+            <div class="mb-0 app-version">
+                v{{ APP_VERSION }}
+            </div>
+        </div>
+    </footer>
+    <script>
+        const etapa1 = {{ etapa1_json|safe }};
+        const etapa2 = {{ etapa2_json|safe }};
+        const alunoId = "{{ aluno_id }}";
+        const profId = "{{ prof_id }}";
+
+        let palavrasAtuais = [];
+        let indexAtual = 0;
+        let tempoRestante = 60;
+        let timerInterval = null;
+        let etapaAtual = 1;
+
+        function iniciarEtapa(numEtapa) {
+            etapaAtual = numEtapa;
+            palavrasAtuais = etapaAtual === 1 ? etapa1 : etapa2;
+            indexAtual = 0;
+            tempoRestante = 60;
+
+            document.getElementById('btn-iniciar').style.display = 'none';
+            document.getElementById('painel-analise').style.display = 'flex';
+            
+            exibirPalavra();
+            iniciarCronometro();
+        }
+
+        function exibirPalavra() {
+            if (indexAtual < palavrasAtuais.length && tempoRestante > 0) {
+                document.getElementById('palavra-box').innerText = palavrasAtuais[indexAtual].texto;
+                document.getElementById('contador-palavras').innerText = indexAtual;
+            } else {
+                finalizarEtapa();
+            }
+        }
+
+        function iniciarCronometro() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                tempoRestante--;
+                let seg = tempoRestante < 10 ? '0' + tempoRestante : tempoRestante;
+                document.getElementById('timer').innerText = `00:${seg}`;
+
+                if (tempoRestante <= 0) {
+                    clearInterval(timerInterval);
+                    finalizarEtapa();
+                }
+            }, 1000);
+        }
+
+        async function registrarEAvançar(statusLeitura) {
+            const palavraObj = palavrasAtuais[indexAtual];
+
+            // Envia análise para o banco de dados em segundo plano
+            fetch('/salvar-resposta/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    aluno_id: alunoId,
+                    prof_id: profId,
+                    etapa: etapaAtual,
+                    palavra_id: palavraObj.id,
+                    status: statusLeitura
+                })
+            });
+
+            indexAtual++;
+            exibirPalavra();
+        }
+
+        function finalizarEtapa() {
+            clearInterval(timerInterval);
+            document.getElementById('painel-analise').style.display = 'none';
+
+            if (etapaAtual === 1) {
+                document.getElementById('palavra-box').innerText = "Primeira Etapa Concluída!";
+                const btnIniciar = document.getElementById('btn-iniciar');
+                btnIniciar.innerText = "Iniciar Segunda Etapa (Pseudopalavras)";
+                btnIniciar.style.display = 'inline-block';
+                btnIniciar.onclick = () => iniciarEtapa(2);
+            } else {
+                document.getElementById('palavra-box').innerText = "Fim do Teste!";
+            }
+        }
+    </script>
+</body>
+</html>

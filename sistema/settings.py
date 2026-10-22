@@ -21,8 +21,8 @@ DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://10.163.78.105',
-    'http://10.163.78.105',
+    'https://192.168.100.11',
+    'http://192.168.100.11',
 ]
 
 # Application definition
@@ -43,7 +43,6 @@ INSTALLED_APPS = [
     'alunos',
     'autentica',
     'base',
-    'dados_censo',
     'palavra',
 ]
 
@@ -55,6 +54,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # middleware de carregamento autentica
+    'autentica.middleware.AutoPopulateMiddleware',
 ]
 
 ROOT_URLCONF = 'sistema.urls'
@@ -87,18 +88,23 @@ CHANNEL_LAYERS = {
 
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'palavra_db'),
-        'USER': os.environ.get('DB_USER', 'palavra_user'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'CISEBAM@26%A%C%'),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
-        'CONN_MAX_AGE': 600,
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+#DATABASES = {
+ #   'default': {
+#        'ENGINE': 'django.db.backends.postgresql',
+#        'NAME': os.environ.get('DB_NAME', 'palavra_db'),
+#        'USER': os.environ.get('DB_USER', 'palavra_user'),
+#        'PASSWORD': os.environ.get('DB_PASSWORD', 'CISEBAM@26%A%C%'),
+#        'HOST': os.environ.get('DB_HOST', 'localhost'),
+ #       'PORT': os.environ.get('DB_PORT', '5432'),
+ #       'CONN_MAX_AGE': 600,
+#    }
+#}
 
 
 # Password validation
@@ -154,12 +160,22 @@ LOGIN_URL = 'autentica:login'
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+# CONFIGURAÇÃO UNIFICADA DE E-MAIL (Django 6.x)
 MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
+    "default": {
+        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+        "OPTIONS": {
+            "host": "smtp.gmail.com",
+            "port": 587,
+            "use_tls": True,
+            "username": "prof.carlospopo@gmail.com",
+            "password": "flgw fypg pptk sfnq",  # Dica: Para Gmail/Google Workspace, use uma 'Senha de App' de 16 dígitos
+        },
+    }
 }
 
+DEFAULT_FROM_EMAIL = "prof.carlospopo@gmail.com"
+
 # Configuração da versão do aplicativo
-APP_VERSION = '1.6.0'
+APP_VERSION = '2.0.0'
 

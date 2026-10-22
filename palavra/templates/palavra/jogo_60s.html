@@ -1,0 +1,449 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desafio dos 60 Segundos — Palavreando</title>
+    
+    <!-- Google Fonts: Montserrat (Sem Serifa, Garrafal e de Alta Legibilidade) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,800;0,900;1,800;1,900&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap 5 CSS e Ícones -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <style>
+        /* Estilização Principal da Fonte Garrafal Sem Serifa */
+        body {
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        .card-palavra {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 4.5rem; /* Tamanho garrafal expandido */
+            font-weight: 900; /* Peso extra em negrito */
+            text-transform: uppercase; /* Força letras garrafais maiúsculas */
+            letter-spacing: 4px; /* Espaçamento claro entre caracteres */
+            color: #0d6efd;
+            min-height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            border: 4px dashed #0d6efd;
+            border-radius: 1.25rem;
+            user-select: none;
+            word-break: break-word;
+        }
+
+        .timer-badge {
+            font-size: 1.8rem;
+            font-weight: 800;
+        }
+
+        .fonte-garrafal {
+            font-family: 'Montserrat', sans-serif;
+            text-transform: uppercase;
+            font-weight: 900;
+        }
+
+        .mic-active {
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-light py-4">
+    <header class="bg-primary text-white py-3 shadow-sm w-100 mb-0">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+                    <img src="{% static 'img/logo.png' %}" alt="Logo" width="180" height="auto" class="d-inline-block align-text-top me-2" style="object-fit: contain;">
+                </a>
+                <h2 class="h4 mb-0 fw-bold fonte-garrafal text-white">Carteirinha de Estudante</h2>
+            </div>
+            <a href="{% url 'autentica:dashboard' %}" class="btn btn-light text-primary fw-bold rounded-pill">
+                <i class="bi bi-arrow-left-circle-fill me-1"></i> Voltar ao Dashboard
+            </a>
+        </div>
+    </header>
+    <div class="container" style="max-width: 700px;">
+        <!-- Cabeçalho com Infos do Aluno -->
+        <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-3 rounded-4 shadow-sm">
+            <div>
+                <span class="text-muted small">Aluno(a):</span>
+                <h4 class="fw-bold mb-0 text-dark">{{ aluno.nome_completo|default:"Aluno Desconhecido" }}</h4>
+                <small class="text-primary fw-bold">Turma: {{ aluno.turma|default:"-" }}</small>
+            </div>
+            <div class="text-end">
+                <span class="text-muted small">Pontuação Total</span>
+                <h3 class="fw-bold text-success mb-0" id="pontuacao-total">0 pts</h3>
+            </div>
+        </div>
+
+        <!-- Card Principal do Jogo -->
+        <div class="card shadow-lg border-0 rounded-4 text-center">
+            <div class="card-body p-4">
+                
+                <!-- Barra Superior: Cronômetro e Alerta de Pontos da Palavra -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="badge bg-danger p-2 px-3 rounded-pill timer-badge">
+                        <i class="bi bi-stopwatch me-1"></i> <span id="tempo-restante">60</span>s
+                    </div>
+                    <div>
+                        <span class="badge bg-warning text-dark p-2 px-3 rounded-pill fs-6 fw-bold" id="badge-pontos-palavra">
+                            Valendo: +10 pts
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Status do Microfone e Texto Ouvido -->
+                <div class="mb-3">
+                    <button id="btn-iniciar-mic" class="btn btn-sm btn-outline-danger rounded-pill px-3 mb-2 fw-bold" onclick="iniciarReconhecimentoVoz()">
+                        <i class="bi bi-mic-fill me-1"></i> <span id="mic-status-text">Ativar Microfone</span>
+                    </button>
+                    <div id="status-voz" class="small text-muted fst-italic" style="min-height: 24px;">
+                        Aguardando áudio...
+                    </div>
+                </div>
+
+                <!-- Exibição da Palavra em Fonte Garrafal Sem Serifa -->
+                <div class="card-palavra mb-4 shadow-sm" id="box-palavra">
+                    CARREGANDO...
+                </div>
+
+                <!-- Botões de Ação -->
+                <div class="row g-2">
+                    <div class="col-4">
+                        <button id="btn-ouvir" class="btn btn-outline-primary btn-lg w-100 fw-bold py-3" onclick="ouvirPalavra()">
+                            <i class="bi bi-volume-up-fill me-1"></i> Ouvir
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button id="btn-repetir" class="btn btn-outline-info btn-lg w-100 fw-bold py-3" onclick="solicitarRepeticao()">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Repetir
+                        </button>
+                    </div>
+                    <div class="col-4">
+                        <button id="btn-pular" class="btn btn-outline-warning btn-lg w-100 fw-bold py-3" onclick="pularPalavra()">
+                            <i class="bi bi-skip-forward-fill me-1"></i> Pular
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Fim do Tempo -->
+    <div class="modal fade" id="modalFimJogo" data-bs-backdrop="static" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-center p-4 rounded-4">
+                <h2 class="fw-bold text-primary mb-2">Tempo Esgotado! ⏱️</h2>
+                <p class="text-muted">Parabéns pelo esforço!</p>
+                <hr>
+                <div class="my-3">
+                    <span class="fs-5 text-muted">Pontuação Final:</span>
+                    <h1 class="display-3 fw-bold text-success fonte-garrafal" id="pontuacao-final">0</h1>
+                </div>
+                <div class="d-grid gap-2">
+                    <button onclick="salvarERedirecionar()" class="btn btn-primary btn-lg fw-bold rounded-pill">
+                        <i class="bi bi-save me-1"></i> Salvar e Voltar ao Dashboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="py-3 bg-white border-top mt-auto">
+        <div class="container text-center text-muted small">
+            <p class="mb-1">© 2026 Sistema de Leitura Interativa por Voz</p>
+            <p class="mb-1">Desenvolvido por <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none">Carlos Brito</a> e <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none">Alessandra Jastes</a>.</p>
+            <p class="mb-0">Todos os direitos reservados.</p>
+            <div class="mb-0 app-version">
+                v{{ APP_VERSION }}
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const palavras = {{ palavras_json|safe }};
+        const alunoId = {% if aluno %}{{ aluno.id }}{% else %}null{% endif %};
+        
+        let indiceAtual = 0;
+        let pontuacaoTotal = 0;
+        let tempoRestante = 60;
+        let tempoInicioPalavra = Date.now();
+        let timerGlobal = null;
+        let timerPontuacaoPalavra = null;
+        let pontosPalavraAtual = 10;
+
+        // Métricas do Banco de Dados
+        let acertos = 0;
+        let ignoradas = 0;
+        let palavrasDemoradas = [];
+        let palavrasPuladas = [];
+        let palavrasErradas = [];
+
+        let recognition = null;
+        let micAtivo = false;
+
+        function normalizarTexto(texto) {
+            return String(texto)
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^\w\s]/gi, '')
+                .trim();
+        }
+
+        function obterTextoPalavra(item) {
+            if (!item) return "";
+            return (typeof item === 'object') ? item.texto : item;
+        }
+
+        function ouvirPalavra() {
+            const palavraAtualTexto = obterTextoPalavra(palavras[indiceAtual]);
+            if (!palavraAtualTexto) return;
+
+            const utterance = new SpeechSynthesisUtterance(palavraAtualTexto);
+            utterance.lang = 'pt-BR';
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function solicitarRepeticao() {
+            const tempoGastoSec = Math.floor((Date.now() - tempoInicioPalavra) / 1000);
+            const palavraAtualTexto = obterTextoPalavra(palavras[indiceAtual]);
+
+            palavrasDemoradas.push({
+                palavra: palavraAtualTexto,
+                tempo_decorrido_segundos: tempoGastoSec,
+                motivo: 'Solicitou Repetição'
+            });
+
+            ouvirPalavra();
+            document.getElementById('status-voz').innerHTML = `<span class="text-info fw-bold">Repetindo palavra... (${tempoGastoSec}s decorridos)</span>`;
+        }
+
+        function pularPalavra() {
+            const tempoGastoSec = Math.floor((Date.now() - tempoInicioPalavra) / 1000);
+            const palavraAtualTexto = obterTextoPalavra(palavras[indiceAtual]);
+
+            palavrasPuladas.push({
+                palavra: palavraAtualTexto,
+                tempo_decorrido_segundos: tempoGastoSec
+            });
+
+            ignoradas++;
+            indiceAtual++;
+            proximaPalavra();
+        }
+
+        function iniciarReconhecimentoVoz() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+            if (!SpeechRecognition) {
+                document.getElementById('status-voz').innerText = "Reconhecimento de voz não suportado neste navegador. Use o Google Chrome.";
+                return;
+            }
+
+            if (recognition) {
+                try { recognition.stop(); } catch(e){}
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'pt-BR';
+            recognition.continuous = true;
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                micAtivo = true;
+                document.getElementById('mic-status-text').innerText = "Microfone Ativo 🎙️";
+                document.getElementById('btn-iniciar-mic').className = "btn btn-sm btn-success rounded-pill px-3 mb-2 mic-active fw-bold";
+                document.getElementById('status-voz').innerText = "Ouvindo... Fale a palavra ou o comando!";
+            };
+
+            recognition.onresult = (event) => {
+                const transcricaoBruta = event.results[event.results.length - 1][0].transcript;
+                const somOuvido = normalizarTexto(transcricaoBruta);
+
+                document.getElementById('status-voz').innerHTML = `Ouvido: <strong>"${transcricaoBruta}"</strong>`;
+
+                // Comandos por Voz
+                if (somOuvido.includes('pular') || somOuvido.includes('passar')) {
+                    document.getElementById('status-voz').innerHTML = `<span class="text-warning fw-bold">Comando reconhecido: Pular</span>`;
+                    pularPalavra();
+                    return;
+                }
+
+                if (somOuvido.includes('repetir') || somOuvido.includes('de novo')) {
+                    document.getElementById('status-voz').innerHTML = `<span class="text-info fw-bold">Comando reconhecido: Repetir</span>`;
+                    solicitarRepeticao();
+                    return;
+                }
+
+                if (somOuvido.includes('ouvir') || somOuvido.includes('falar')) {
+                    ouvirPalavra();
+                    return;
+                }
+
+                // Validação de Leitura
+                const palavraAtualTexto = obterTextoPalavra(palavras[indiceAtual]);
+                const palavraEsperada = normalizarTexto(palavraAtualTexto);
+
+                if (somOuvido === palavraEsperada || somOuvido.includes(palavraEsperada)) {
+                    document.getElementById('status-voz').innerHTML = `<span class="text-success fw-bold">✓ Correto! (${palavraAtualTexto.toUpperCase()})</span>`;
+                    processarAcerto();
+                } else {
+                    palavrasErradas.push({
+                        palavra_real: palavraAtualTexto,
+                        palavra_errada: transcricaoBruta.trim()
+                    });
+                    document.getElementById('status-voz').innerHTML = `<span class="text-danger fw-bold">✗ Falou: "${transcricaoBruta.trim()}" (Esperado: ${palavraAtualTexto.toUpperCase()})</span>`;
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.warn("Erro no microfone:", event.error);
+            };
+
+            recognition.onend = () => {
+                if (tempoRestante > 0 && micAtivo) {
+                    try { recognition.start(); } catch(e) {}
+                }
+            };
+
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error("Erro ao iniciar microfone:", e);
+            }
+        }
+
+        function iniciarJogo() {
+            if (!palavras || palavras.length === 0) {
+                document.getElementById('box-palavra').innerText = "Nenhuma palavra cadastrada.";
+                return;
+            }
+
+            proximaPalavra();
+            iniciarReconhecimentoVoz();
+
+            timerGlobal = setInterval(() => {
+                tempoRestante--;
+                document.getElementById('tempo-restante').innerText = tempoRestante;
+
+                if (tempoRestante <= 0) {
+                    finalizarJogo();
+                }
+            }, 1000);
+        }
+
+        function proximaPalavra() {
+            if (indiceAtual >= palavras.length) {
+                finalizarJogo();
+                return;
+            }
+
+            const itemPalavra = palavras[indiceAtual];
+            const textoExibir = obterTextoPalavra(itemPalavra);
+
+            // Exibe a palavra em caixa-alta garrafal
+            document.getElementById('box-palavra').innerText = textoExibir.toUpperCase();
+            
+            tempoInicioPalavra = Date.now();
+            pontosPalavraAtual = 10;
+            atualizarBadgePontos();
+
+            clearInterval(timerPontuacaoPalavra);
+            timerPontuacaoPalavra = setInterval(() => {
+                const tempoDecorridoSec = Math.floor((Date.now() - tempoInicioPalavra) / 1000);
+                
+                if (tempoDecorridoSec >= 3 && tempoDecorridoSec < 6) {
+                    pontosPalavraAtual = 8;
+                } else if (tempoDecorridoSec >= 6 && tempoDecorridoSec < 9) {
+                    pontosPalavraAtual = 5;
+                    if (!palavrasDemoradas.some(p => p.palavra === textoExibir)) {
+                        palavrasDemoradas.push({ palavra: textoExibir, tempo_decorrido_segundos: tempoDecorridoSec, motivo: 'Demora na Leitura' });
+                    }
+                } else if (tempoDecorridoSec >= 9) {
+                    pontosPalavraAtual = 2;
+                }
+                atualizarBadgePontos();
+            }, 1000);
+        }
+
+        function atualizarBadgePontos() {
+            const badge = document.getElementById('badge-pontos-palavra');
+            badge.innerText = `Valendo: +${pontosPalavraAtual} pts`;
+            if (pontosPalavraAtual === 10) badge.className = "badge bg-success p-2 px-3 rounded-pill fs-6 fw-bold";
+            else if (pontosPalavraAtual >= 5) badge.className = "badge bg-warning text-dark p-2 px-3 rounded-pill fs-6 fw-bold";
+            else badge.className = "badge bg-danger p-2 px-3 rounded-pill fs-6 fw-bold";
+        }
+
+        function processarAcerto() {
+            pontuacaoTotal += pontosPalavraAtual;
+            acertos++;
+            document.getElementById('pontuacao-total').innerText = `${pontuacaoTotal} pts`;
+            indiceAtual++;
+            proximaPalavra();
+        }
+
+        function finalizarJogo() {
+            micAtivo = false;
+            if (recognition) {
+                try { recognition.stop(); } catch(e){}
+            }
+            clearInterval(timerGlobal);
+            clearInterval(timerPontuacaoPalavra);
+
+            document.getElementById('pontuacao-final').innerText = pontuacaoTotal;
+
+            const modalFim = new bootstrap.Modal(document.getElementById('modalFimJogo'));
+            modalFim.show();
+
+            setTimeout(() => {
+                salvarERedirecionar();
+            }, 2000);
+        }
+
+        function salvarERedirecionar() {
+            fetch("{% url 'palavra:registrar_resposta' %}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({
+                    aluno_id: alunoId,
+                    pontuacao_total: pontuacaoTotal,
+                    palavras_acertadas: acertos,
+                    tempo_segundos: 60,
+                    palavras_com_demora: palavrasDemoradas,
+                    palavras_puladas: palavrasPuladas,
+                    palavras_erradas: palavrasErradas
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                window.location.href = "{% url 'autentica:dashboard' %}";
+            })
+            .catch(error => {
+                console.error("Erro ao salvar:", error);
+                window.location.href = "{% url 'autentica:dashboard' %}";
+            });
+        }
+
+        window.onload = iniciarJogo;
+    </script>
+</body>
+</html>

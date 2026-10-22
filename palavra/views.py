@@ -1,35 +1,38 @@
 import io
-import json
-import re  
-import unicodedata
 from datetime import timedelta
-from difflib import SequenceMatcher
+import os
+import re
+import difflib
+import json
 
+from django.contrib import messages
 import qrcode
 from django.conf import settings
-from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import models, transaction
+from django.db import models, transaction 
 from django.db.models import Count, Max
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from datetime import timedelta
+from django.utils import timezone
 
 from alunos.models import Aluno, ResultadoLeitura
-from .forms import FraseForm, PalavraForm
-from .models import Frase, Palavra, PartidaBatalha, SolicitacaoNivel, HistoricoDitado
+from .forms import PalavraForm, FraseForm
+from .models import BlocoHistoria, Historia, Palavra, PartidaBatalha, RespostaCompreensao, SolicitacaoNivel, Frase, HistoricoDitado
+from palavra.models import ResultadoOuvirEFalar
 
 app_name = 'palavra'
 
 
+@login_required
 # 1. Tela para o aluno se identificar antes de iniciar
 def selecionar_aluno(request):
     alunos = Aluno.objects.all().order_by('nome_completo')
     return render(request, 'palavra/selecionar_aluno.html', {'alunos': alunos})
 
-
+@login_required
 # 2. Tela da atividade
 def exibir_palavras(request):
   aluno_id = request.GET.get('aluno_id')
@@ -62,21 +65,77 @@ def exibir_palavras(request):
 
   return render(request, 'palavra/exibir_palavras.html', context)
 
+@login_required
+def cadastrar_frase(request):
+    if request.method == 'POST':
+        texto = request.POST.get('texto')
+        # Converte explicitamente para inteiro (garante valor padrão 1 se falhar)
+        try:
+            nivel = int(request.POST.get('nivel', 1))
+        except (ValueError, TypeError):
+            nivel = 1
 
+        if texto:
+            Frase.objects.create(
+                texto=texto,
+                nivel=nivel,
+                professor=request.user
+            )
+            messages.success(request, 'Frase cadastrada com sucesso!')
+            return redirect('palavra:cadastrar_frase')
+
+    frases = Frase.objects.filter(professor=request.user).order_by('-criado_em')
+    return render(request, 'palavra/cadastrar_frase.html', {'frases': frases})
+
+@login_required
+def excluir_frase(request, frase_id):
+    # Garante que só encontra frases cadastradas (ou do professor logado)
+    frase = get_object_or_404(Frase, id=frase_id)
+    
+    if request.method == 'POST':
+        frase.delete()
+        messages.success(request, 'Frase excluída com sucesso!')
+        return redirect('palavra:cadastrar_frase')
+
+    return redirect('palavra:cadastrar_frase')
+
+@login_required
 def modo(request):
-    aluno_id_raw = request.GET.get('aluno_id')
-    aluno = None
+  aluno_id_raw = request.GET.get('aluno_id')
+  aluno = None
 
-    # Validação e conversão segura para inteiro
-    try:
-        if aluno_id_raw:
-            aluno_id = int(aluno_id_raw)
-            aluno = get_object_or_404(Aluno, pk=aluno_id)
-    except (ValueError, TypeError):
-        # Se aluno_id vier malformado, redireciona para seleção
-        return redirect('palavra:selecionar_aluno')
+  try:
+    if aluno_id_raw:
+      aluno_id = int(aluno_id_raw)
+      aluno = get_object_or_404(Aluno, pk=aluno_id)
+  except (ValueError, TypeError):
+    return redirect('palavra:selecionar_aluno')
 
-    return render(request, 'palavra/modo.html', {'aluno': aluno})
+  # Certifique-se de que o caminho do template coincide com o arquivo alterado
+  return render(request, 'palavra/modo.html', {'aluno': aluno})
+
+@login_required
+def jogo_60s(request):
+    aluno_id = request.GET.get('aluno_id')
+    modo = request.GET.get('modo', '60s')
+    nivel = request.GET.get('nivel')
+    aluno = get_object_or_404(Aluno, pk=aluno_id) if aluno_id else None
+    
+    palavras_qs = Palavra.objects.all()
+    if nivel:
+      palavras_qs = palavras_qs.filter(dificuldade=nivel)
+      
+    palavras_lista = list(palavras_qs.values_list('texto', flat=True))
+    
+    context = {
+     'aluno': aluno,
+     'aluno_id': aluno_id,
+     'modo': modo,
+     'nivel': nivel,
+     'palavras': palavras_lista,
+     'palavras_json': json.dumps(palavras_lista),
+    }
+    return render(request, 'palavra/jogo_60s.html', context)
 
 def modo_batalha(request):
   aluno_id = request.GET.get('aluno_id')
@@ -151,6 +210,170 @@ def modo_batalha(request):
 
   return render(request, 'palavra/batalha.html', context)
 
+@login_required
+def ouvir_falar(request):
+    aluno_id = request.GET.get('aluno_id')
+    nivel = request.GET.get('nivel', 1)
+    modo = request.GET.get('modo', 'ouvir_falar')
+
+    aluno = get_object_or_404(Aluno, id=aluno_id) if aluno_id else None
+
+    # Busca palavras reais do nível ou fallback
+    palavras_qs = Palavra.objects.filter(dificuldade=nivel, tipo='P')
+    if not palavras_qs.exists():
+        palavras_qs = Palavra.objects.filter(tipo='P')
+
+    # Extrai estritamente dicionários simples
+    palavras_lista = list(palavras_qs.values('id', 'texto', 'dificuldade'))
+
+    context = {
+        'aluno': aluno,
+        'aluno_id': aluno_id,
+        'nivel': nivel,
+        'modo': modo,
+        'palavras': palavras_lista,
+        'palavras_json': json.dumps(palavras_lista, ensure_ascii=False),
+    }
+    return render(request, 'palavra/ouvir_falar.html', context)
+
+def normalizar_texto(texto):
+    """Remove pontuações extras e limpa espaços."""
+    texto = re.sub(r'[^\w\s]', '', texto.lower())
+    return texto.strip()
+
+@login_required
+def ditado(request):
+    aluno_id = request.GET.get('aluno_id')
+    nivel = request.GET.get('nivel', '1')
+    
+    aluno = get_object_or_404(Aluno, id=aluno_id) if aluno_id else None
+
+    # Busca frases do nível ou todas as frases cadastradas
+    frases_qs = Frase.objects.filter(nivel=nivel)
+    if not frases_qs.exists():
+        frases_qs = Frase.objects.all()
+
+    frases_lista = list(frases_qs.values('id', 'texto', 'nivel'))
+
+    context = {
+        'aluno': aluno,
+        'aluno_id': aluno_id,
+        'nivel': nivel,
+        'frases_json': json.dumps(frases_lista, ensure_ascii=False)
+    }
+    return render(request, 'palavra/ditado.html', context)
+
+@csrf_exempt
+def salvar_resultado_ditado(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            frase_id = data.get('frase_id')
+            texto_digitado = data.get('texto_digitado', '')
+            aluno_id = data.get('aluno_id')
+            poulou = data.get('poulou', False)
+            tempo_gasto = data.get('tempo_gasto', 0)  # Recebe o tempo em segundos
+
+            if not frase_id or not aluno_id:
+                return JsonResponse({'status': 'erro', 'mensagem': 'Dados incompletos'}, status=400)
+
+            frase = get_object_or_404(Frase, id=frase_id)
+            aluno = get_object_or_404(Aluno, id=aluno_id)
+
+            original_bruto = frase.texto.strip()
+            digitado_bruto = texto_digitado.strip()
+
+            palavras_originais = normalizar_texto(original_bruto).split()
+            palavras_digitadas = normalizar_texto(digitado_bruto).split()
+
+            total_palavras = len(palavras_originais)
+            relatorio_palavras = []
+            palavras_com_erro = []
+
+            if total_palavras == 0 or poulou:
+                pontuacao_final = 0
+                palavras_com_erro = palavras_originais.copy()
+            else:
+                valor_por_palavra = 100.0 / total_palavras
+                pontos_acumulados = 0.0
+
+                matcher = difflib.SequenceMatcher(None, palavras_originais, palavras_digitadas)
+                status_originais = [None] * total_palavras
+                usados_digitados = set()
+
+                for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+                    if tag == 'equal':
+                        for idx in range(i1, i2):
+                            status_originais[idx] = {'digitado': palavras_originais[idx], 'status': 'correto'}
+                            pontos_acumulados += valor_por_palavra
+                            usados_digitados.add(j1 + (idx - i1))
+
+                    elif tag in ('replace', 'delete', 'insert'):
+                        orig_sub = palavras_originais[i1:i2]
+                        dig_sub = palavras_digitadas[j1:j2]
+
+                        for idx, orig in enumerate(orig_sub):
+                            orig_index = i1 + idx
+                            melhor_match_idx = -1
+                            melhor_sim = 0.0
+
+                            for d_idx, dig in enumerate(dig_sub):
+                                real_d_idx = j1 + d_idx
+                                if real_d_idx in usados_digitados:
+                                    continue
+                                sim = difflib.SequenceMatcher(None, orig, dig).ratio()
+                                if sim > melhor_sim:
+                                    melhor_sim = sim
+                                    melhor_match_idx = real_d_idx
+
+                            if melhor_match_idx != -1 and melhor_sim >= 0.85:
+                                dig_palavra = palavras_digitadas[melhor_match_idx]
+                                usados_digitados.add(melhor_match_idx)
+                                status_originais[orig_index] = {'digitado': dig_palavra, 'status': 'ortografia'}
+                                pontos_acumulados += (valor_por_palavra * 0.5)
+                                palavras_com_erro.append(f"{orig} (grafia: {dig_palavra})")
+                            else:
+                                status_originais[orig_index] = {'digitado': '[omitida]', 'status': 'omissao'}
+                                palavras_com_erro.append(f"{orig} (omitida)")
+
+                # Monta lista de relatórios
+                for i, orig in enumerate(palavras_originais):
+                    item = status_originais[i]
+                    if item:
+                        relatorio_palavras.append({'original': orig, 'digitado': item['digitado'], 'status': item['status']})
+                    else:
+                        relatorio_palavras.append({'original': orig, 'digitado': '[omitida]', 'status': 'omissao'})
+
+                pontuacao_final = round(pontos_acumulados)
+
+            professor = request.user if request.user.is_authenticated else frase.professor
+
+            # Salva o registro do ditado
+            HistoricoDitado.objects.create(
+                aluno=aluno,
+                frase=frase,
+                usuario_professor=professor,
+                texto_original=original_bruto,
+                texto_digitado=digitado_bruto if not poulou else "[PULOU]",
+                pontuacao=pontuacao_final,
+                erros_palavra=", ".join(palavras_com_erro) if palavras_com_erro else "Nenhum erro",
+                tempo_gasto=tempo_gasto
+            )
+
+            return JsonResponse({
+                'status': 'sucesso',
+                'pontuacao': pontuacao_final,
+                'texto_correto': original_bruto,
+                'texto_digitado': digitado_bruto,
+                'relatorio': relatorio_palavras
+            })
+
+        except Exception as e:
+            return JsonResponse({'status': 'erro', 'mensagem': str(e)}, status=500)
+
+    return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
+
+@login_required
 @csrf_exempt
 def criar_solicitacao(request):
   if request.method == 'POST':
@@ -175,7 +398,7 @@ def criar_solicitacao(request):
 
   return JsonResponse({'error': 'Método inválido'}, status=400)
 
-
+@login_required
 def checar_status_solicitacao(request, solicitacao_id):
   solicitacao = get_object_or_404(SolicitacaoNivel, pk=solicitacao_id)
   return JsonResponse({
@@ -184,52 +407,33 @@ def checar_status_solicitacao(request, solicitacao_id):
       'aluno_id': solicitacao.aluno.id,
   })
 
+@login_required
+def checar_solicitacao_pendente(request):
+    """ Retorna para o Dashboard do Professor a primeira solicitação pendente """
+    solicitacao = SolicitacaoNivel.objects.filter(status='pendente').first()
+    if solicitacao:
+        return JsonResponse({
+            'status': 'tem_solicitacao',
+            'solicitacao_id': solicitacao.id,
+            'aluno_nome': solicitacao.aluno.nome_completo,
+            'nivel': solicitacao.nivel
+        })
+    return JsonResponse({'status': 'sem_solicitacao'})
 
-def buscar_solicitacoes_pendentes(request):
-  # Busca a solicitação pendente mais recente
-  solicitacao = (
-      SolicitacaoNivel.objects.filter(status='pendente')
-      .order_by('-criado_em')
-      .first()
-  )
-
-  if solicitacao:
-    return JsonResponse({
-        'tem_solicitacao': True,
-        'solicitacao_id': solicitacao.id,
-        'id': solicitacao.id,  # Garantia para ambas as chamadas JS
-        'aluno_nome': solicitacao.aluno.nome_completo,
-        'nivel': solicitacao.nivel,
-    })
-
-  return JsonResponse({'tem_solicitacao': False})
-
-
-@csrf_exempt
-def responder_solicitacao(request):
-  if request.method == 'POST':
-    try:
-      data = json.loads(request.body)
-      solicitacao_id = data.get('solicitacao_id') or data.get('id')
-
-      # Suporta tanto a chave 'resposta' quanto 'status' enviadas pelo JS
-      resposta = data.get('resposta') or data.get('status')
-
-      solicitacao = get_object_or_404(SolicitacaoNivel, pk=solicitacao_id)
-      solicitacao.status = resposta
-
-      if request.user.is_authenticated:
-        solicitacao.professor = request.user
-
-      solicitacao.save()
-
-      return JsonResponse(
-          {'status': 'sucesso', 'message': f'Solicitação marcada como {resposta}'}
-      )
-    except Exception as e:
-      return JsonResponse({'error': str(e)}, status=400)
-
-  return JsonResponse({'error': 'Método inválido'}, status=400)
+@login_required
+def responder_solicitacao(request, solicitacao_id):
+    """ O professor aprova ou recusa a solicitação """
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        status_resposta = data.get('status') # 'aprovado' ou 'recusado'
+        
+        solicitacao = SolicitacaoNivel.objects.filter(id=solicitacao_id).first()
+        if solicitacao:
+            solicitacao.status = status_resposta
+            solicitacao.save()
+            return JsonResponse({'status': 'sucesso'})
+            
+    return JsonResponse({'status': 'erro'}, status=400)
 
 @login_required
 def deletar_palavra(request, palavra_id):
@@ -239,7 +443,6 @@ def deletar_palavra(request, palavra_id):
         palavra.delete()
 
     return redirect('palavra:gerenciar_palavras')
-
 
 @login_required
 def gerenciar_palavras(request):
@@ -260,7 +463,7 @@ def gerenciar_palavras(request):
         {'form': form, 'palavras': palavras},
     )
 
-
+@login_required
 def gerar_qrcode_aluno(request, aluno_id, prof_id):
     domain = request.build_absolute_uri('/')[:-1]
 
@@ -286,7 +489,42 @@ def gerar_qrcode_aluno(request, aluno_id, prof_id):
 
     return HttpResponse(buffer.getvalue(), content_type='image/png')
 
+@login_required
+@csrf_exempt
+def registrar_resultado_ouvir_falar(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            aluno_id = data.get('aluno_id')
+            
+            if not aluno_id:
+                return JsonResponse({'status': 'erro', 'mensagem': 'Aluno não informado.'}, status=400)
 
+            aluno = get_object_or_404(Aluno, id=aluno_id)
+
+            resultado = ResultadoOuvirEFalar.objects.create(
+                aluno=aluno,
+                pontuacao_total=data.get('pontuacao_total', 0),
+                palavras_acertadas=data.get('palavras_acertadas', 0),
+                palavras_ignoradas=len(data.get('palavras_puladas', [])),
+                tempo_segundos=data.get('tempo_segundos', 60),
+                palavras_com_demora=data.get('palavras_com_demora', []),
+                palavras_puladas=data.get('palavras_puladas', []),
+                palavras_erradas=data.get('palavras_erradas', [])
+            )
+
+            return JsonResponse({
+                'status': 'sucesso',
+                'mensagem': 'Resultado do Ouvir e Falar salvo com sucesso no novo modelo!',
+                'id_resultado': resultado.id
+            })
+
+        except Exception as e:
+            return JsonResponse({'status': 'erro', 'mensagem': str(e)}, status=500)
+
+    return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.'}, status=405)
+
+@login_required
 @csrf_exempt
 def registrar_resposta(request):
     if request.method == 'POST':
@@ -299,21 +537,49 @@ def registrar_resposta(request):
 
             aluno = get_object_or_404(Aluno, id=aluno_id)
 
-            # Garante que salva arrays serializados em JSON
+            # Trata palavras com demora (extrai apenas os nomes se vier em formato objeto)
+            raw_demora = data.get('palavras_com_demora', [])
+            demora_lista = []
+            for item in raw_demora:
+                if isinstance(item, dict):
+                    demora_lista.append(item.get('palavra', ''))
+                elif item:
+                    demora_lista.append(str(item))
+
+            # Trata palavras puladas
+            raw_puladas = data.get('palavras_puladas', []) or data.get('palavras_ignoradas', [])
+            puladas_lista = []
+            for item in raw_puladas:
+                if isinstance(item, dict):
+                    puladas_lista.append(item.get('palavra', ''))
+                elif item:
+                    puladas_lista.append(str(item))
+
+            # Trata palavras erradas (real vs falada)
+            raw_erradas = data.get('palavras_erradas', [])
+            erradas_lista = []
+            for item in raw_erradas:
+                if isinstance(item, dict):
+                    erradas_lista.append(f"{item.get('palavra_real', '')} (falou: {item.get('palavra_errada', '')})")
+                elif item:
+                    erradas_lista.append(str(item))
+
+            # Cria o registro no banco de dados (atribuindo listas Python diretamente ao JSONField)
             resultado = ResultadoLeitura.objects.create(
                 aluno=aluno,
-                pontuacao_total=data.get('pontuacao_total', data.get('pontuacao', 0)),
-                palavras_acertadas=data.get('palavras_acertadas', data.get('acertos', 0)),
-                palavras_ignoradas=data.get('palavras_ignoradas', data.get('erros', 0)),
-                palavras_com_demora=json.dumps(data.get('palavras_com_demora', data.get('demoradas', []))),
-                palavras_puladas=json.dumps(data.get('palavras_puladas', data.get('puladas', []))),
-                palavras_erradas=json.dumps(data.get('palavras_erradas', data.get('erradas', []))),
+                pontuacao_total=data.get('pontuacao_total', 0),
+                palavras_acertadas=data.get('palavras_acertadas', 0),
+                palavras_ignoradas=len(puladas_lista),
+                tempo_segundos=data.get('tempo_segundos', 60),
+                palavras_com_demora=list(set(filter(None, demora_lista))),
+                palavras_puladas=list(set(filter(None, puladas_lista))),
+                palavras_erradas=list(set(filter(None, erradas_lista)))
             )
 
             return JsonResponse({
                 'status': 'sucesso',
                 'mensagem': 'Resultado salvo com sucesso no banco de dados!',
-                'id_resultado': resultado.id,
+                'id_resultado': resultado.id
             })
 
         except Exception as e:
@@ -321,37 +587,37 @@ def registrar_resposta(request):
 
     return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido'}, status=405)
 
-
+@login_required
 @csrf_exempt
 def salvar_resultado(request):
-  if request.method == 'POST':
-    try:
-      data = json.loads(request.body)
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
 
-      aluno = get_object_or_404(Aluno, id=data.get('aluno_id'))
+            aluno = get_object_or_404(Aluno, id=data.get('aluno_id'))
 
-      resultado = ResultadoLeitura.objects.create(
-          aluno=aluno,
-          pontuacao_total=data.get('pontuacao_total', data.get('pontuacao', 0)),
-          palavras_acertadas=data.get('palavras_acertadas', data.get('acertos', 0)),
-          palavras_ignoradas=data.get('palavras_ignoradas', data.get('erros', 0)),
-          palavras_com_demora=json.dumps(data.get('palavras_com_demora', data.get('demoradas', []))),
-          palavras_puladas=json.dumps(data.get('palavras_puladas', data.get('puladas', []))),
-          palavras_erradas=json.dumps(data.get('palavras_erradas', data.get('erradas', []))),
-      )
+            resultado = ResultadoLeitura.objects.create(
+                aluno=aluno,
+                pontuacao_total=data.get('pontuacao_total', 0),
+                palavras_acertadas=data.get('palavras_acertadas', 0),
+                palavras_ignoradas=data.get('palavras_ignoradas', 0),
+                palavras_com_demora=json.dumps(
+                    data.get('palavras_com_demora', [])
+                ),
+            )
 
-      return JsonResponse({
-          'status': 'sucesso',
-          'mensagem': 'Resultado salvo com sucesso!',
-          'id_resultado': resultado.id,
-      })
+            return JsonResponse({
+                'status': 'sucesso',
+                'mensagem': 'Resultado salvo com sucesso!',
+                'id_resultado': resultado.id,
+            })
 
-    except Exception as e:
-      return JsonResponse({'status': 'erro', 'mensagem': str(e)}, status=400)
+        except Exception as e:
+            return JsonResponse({'status': 'erro', 'mensagem': str(e)}, status=400)
 
-  return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.'}, status=405)
+    return JsonResponse({'status': 'erro', 'mensagem': 'Método não permitido.'}, status=405)
 
-
+@login_required
 def ranking_recordes(request):
     ranking = (
         Aluno.objects.annotate(
@@ -364,241 +630,199 @@ def ranking_recordes(request):
 
     return render(request, 'palavra/ranking.html', {'ranking': ranking})
 
-def leitura_escrita(request):
-    aluno_id = request.GET.get('aluno_id')
-    nivel = request.GET.get('nivel')
+#leitura de historia
+@login_required
+def iniciar_leitura_historia(request, aluno_id):
+    nivel = request.GET.get('nivel', '1')
+    historia_id = request.GET.get('historia_id')
 
-    # Busca o aluno se o ID for fornecido
-    aluno = get_object_or_404(Aluno, pk=aluno_id) if aluno_id else None
+    aluno = get_object_or_404(Aluno, id=aluno_id)
 
-    # Filtra as palavras de acordo com a dificuldade/nível
-    palavras_qs = Palavra.objects.all()
-    if nivel:
-        palavras_qs = palavras_qs.filter(dificuldade=nivel)
+    if historia_id:
+        historia = Historia.objects.filter(id=historia_id).first()
+    else:
+        historia = Historia.objects.filter(nivel=nivel).first()
 
-    # Converte o QuerySet para dicionário serializável
-    palavras_lista = list(
-        palavras_qs.values('id', 'texto', 'dificuldade', 'tipo')
-    )
+    if not historia:
+        return render(request, 'palavra/sem_historias.html', {'aluno': aluno})
+
+    # Mapeia os blocos garantindo a extração do URL da imagem
+    blocos_queryset = historia.blocos.all().order_by('ordem_bloco')
+    blocos = []
+    for b in historia.blocos.all().order_by('ordem_bloco'):
+        blocos.append({
+            'id': b.id,
+            'ordem_bloco': b.ordem_bloco,
+            'trecho_texto': b.trecho_texto,
+            # Retorna o URL público da mídia
+            'imagem_url': b.imagem.url if b.imagem else None
+        })
 
     context = {
         'aluno': aluno,
-        'aluno_id': aluno_id,
-        'nivel': nivel,
-        'palavras': palavras_lista,
-        'palavras_json': json.dumps(palavras_lista),
+        'aluno_id': aluno.id,
+        'historia': historia,
+        'blocos_json': json.dumps(blocos, ensure_ascii=False)
     }
-
-    return render(request, 'palavra/leitura_escuta.html', context)
-
-#======== DITADO ===========
-@login_required
-def cadastrar_frase(request):
-  """View baseada no template para gestão e cadastro de frases/parágrafos."""
-  if request.method == 'POST':
-    form = FraseForm(request.POST)
-    if form.is_valid():
-      form.save()
-      messages.success(
-          request, 'Frase/Parágrafo cadastrado com sucesso para o Ditado!'
-      )
-      return redirect('palavra:cadastrar_frase')
-  else:
-    form = FraseForm()
-
-  # Lista todas as frases para exibir na tabela abaixo do formulário
-  frases = Frase.objects.all().order_by('-criado_em')
-
-  return render(
-      request,
-      'palavra/cadastrar_frase.html',
-      {
-          'form': form,
-          'frases': frases,
-      },
-  )
+    return render(request, 'palavra/leitura_historia.html', context)
 
 
-@login_required
-def eliminar_frase(request, frase_id):
-  """Permite eliminar uma frase existente diretamente pelo template."""
-  frase = get_object_or_404(Frase, id=frase_id)
-  frase.delete()
-  messages.success(request, 'Frase/Parágrafo removido com sucesso.')
-  return redirect('palavra:cadastrar_frase')
+@csrf_exempt
+def salvar_resposta_historia(request):
+    """
+    Salva a resposta do aluno (texto ou transcrição de voz) para cada bloco lido.
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            aluno_id = data.get('aluno_id')
+            bloco_id = data.get('bloco_id')
+            resposta = data.get('resposta', '').strip()
+            tipo_resposta = data.get('tipo_resposta', 'texto')
+            tempo_gasto = data.get('tempo_gasto', 0)
 
-def normalizar_texto(texto):
-  if not texto:
-    return ''
-  texto = unicodedata.normalize('NFD', texto)
-  texto = ''.join(c for c in texto if unicodedata.category(c) != 'Mn')
-  return texto.lower().strip()
+            if not aluno_id or not bloco_id or not resposta:
+                return JsonResponse({'status': 'erro', 'mensagem': 'Preencha a resposta antes de prosseguir.'}, status=400)
 
-def limpar_pontuacao(texto):
-  return re.sub(r'[^\w\s]', '', texto)
+            aluno = get_object_or_404(Aluno, id=aluno_id)
+            bloco = get_object_or_404(BlocoHistoria, id=bloco_id)
 
-@login_required
-def ditado(request):
-  frase_obj = Frase.objects.order_by('?').first()
-
-  # Resgata aluno_id da URL (GET), da sessão ou do formulário (POST)
-  aluno_id_param = request.GET.get('aluno_id')
-  if aluno_id_param:
-    request.session['aluno_id'] = aluno_id_param
-
-  aluno_id_ativo = (
-      request.POST.get('aluno_id')
-      or request.session.get('aluno_id')
-      or aluno_id_param
-  )
-
-  aluno_selecionado = None
-  if aluno_id_ativo:
-    try:
-      aluno_selecionado = Aluno.objects.filter(
-          id=int(str(aluno_id_ativo).strip())
-      ).first()
-    except (ValueError, TypeError):
-      aluno_selecionado = None
-
-  if request.method == 'POST':
-    frase_id = request.POST.get('frase_id')
-    texto_digitado = request.POST.get('texto_digitado', '').strip()
-
-    frase_original_obj = get_object_or_404(Frase, id=frase_id)
-    texto_original = frase_original_obj.texto.strip()
-
-    palavras_orig = limpar_pontuacao(texto_original).split()
-    palavras_dig = limpar_pontuacao(texto_digitado).split()
-
-    total_palavras = len(palavras_orig)
-    if total_palavras == 0:
-      return JsonResponse(
-          {'sucesso': False, 'mensagem': 'Frase original inválida.'}
-      )
-
-    pontos_por_palavra = 100 / total_palavras
-    pontuacao_total = 0.0
-
-    diferencas_html = []
-    erros_acentuacao = 0
-    erros_palavra = 0
-    palavras_erradas = []
-
-    max_len = max(len(palavras_orig), len(palavras_dig))
-
-    for i in range(max_len):
-      p_orig = palavras_orig[i] if i < len(palavras_orig) else ''
-      p_dig = palavras_dig[i] if i < len(palavras_dig) else ''
-
-      if not p_dig:
-        erros_palavra += 1
-        palavras_erradas.append(
-            {'original': p_orig, 'digitada': '', 'motivo': 'omitida'}
-        )
-        diferencas_html.append(
-            '<span class="text-danger text-decoration-line-through fw-bold"'
-            f' title="Faltou: {p_orig}">___</span>'
-        )
-        continue
-
-      if not p_orig:
-        palavras_erradas.append(
-            {'original': '', 'digitada': p_dig, 'motivo': 'extra'}
-        )
-        diferencas_html.append(
-            '<span class="text-secondary text-decoration-line-through"'
-            f' title="Extra">{p_dig}</span>'
-        )
-        continue
-
-      if p_orig.lower() == p_dig.lower():
-        pontuacao_total += pontos_por_palavra
-        diferencas_html.append(
-            f'<span class="text-success fw-bold">{p_dig}</span>'
-        )
-      else:
-        p_orig_norm = normalizar_texto(p_orig)
-        p_dig_norm = normalizar_texto(p_dig)
-
-        if p_orig_norm == p_dig_norm:
-          pontuacao_total += pontos_por_palavra * 0.7
-          erros_acentuacao += 1
-          palavras_erradas.append(
-              {'original': p_orig, 'digitada': p_dig, 'motivo': 'acentuacao'}
-          )
-          diferencas_html.append(
-              '<span class="text-warning text-decoration-underline fw-bold"'
-              f' title="Correto: {p_orig}">{p_dig}</span>'
-          )
-        else:
-          sim = SequenceMatcher(None, p_orig_norm, p_dig_norm).ratio()
-          if sim >= 0.85:
-            pontuacao_total += pontos_por_palavra * 0.2
-            erros_palavra += 1
-            palavras_erradas.append({
-                'original': p_orig,
-                'digitada': p_dig,
-                'motivo': 'ortografia_leve',
-            })
-            diferencas_html.append(
-                '<span class="text-warning fw-bold"'
-                f' title="Correto: {p_orig}">{p_dig}</span>'
-            )
-          else:
-            erros_palavra += 1
-            palavras_erradas.append({
-                'original': p_orig,
-                'digitada': p_dig,
-                'motivo': 'incorreto',
-            })
-            diferencas_html.append(
-                '<span class="text-danger text-decoration-line-through'
-                f' fw-bold" title="Correto: {p_orig}">{p_dig}</span>'
+            # Grava a resposta no banco de dados
+            RespostaCompreensao.objects.create(
+                aluno=aluno,
+                bloco=bloco,
+                tipo_resposta=tipo_resposta,
+                resposta_aluno=resposta,
+                tempo_resposta_segundos=tempo_gasto
             )
 
-    resultado_html = ' '.join(diferencas_html)
-    pontuacao_final = max(0, min(100, round(pontuacao_total)))
+            return JsonResponse({'status': 'sucesso', 'mensagem': 'Resposta salva com sucesso!'})
 
-    # Persiste no Banco de Dados vinculando o aluno
-    historico = HistoricoDitado.objects.create(
-        usuario_professor=request.user,
-        aluno=aluno_selecionado,
-        frase=frase_original_obj,
-        texto_original=texto_original,
-        texto_digitado=texto_digitado,
-        pontuacao=pontuacao_final,
-        erros_acentuacao=erros_acentuacao,
-        erros_palavra=erros_palavra,
-        palavras_erradas=palavras_erradas,
-    )
+        except Exception as e:
+            return JsonResponse({'status': 'erro', 'mensagem': str(e)}, status=500)
 
+    return JsonResponse({'status': 'erro', 'mensagem': 'Método inválido'}, status=400)
+
+
+@login_required
+def detalhe_resposta_historia_professor(request, resposta_id):
+    """
+    View para o professor analisar a resposta exata enviada pelo aluno relacionada ao trecho lido.
+    """
+    resposta_obj = get_object_or_404(RespostaCompreensao, id=resposta_id)
+    
+    context = {
+        'resposta': resposta_obj,
+        'aluno': resposta_obj.aluno,
+        'bloco': resposta_obj.bloco,
+        'historia': resposta_obj.bloco.historia
+    }
+    return render(request, 'palavra/detalhe_resposta_professor.html', context)
+
+@login_required
+def cadastrar_historia(request):
+    if request.method == 'POST':
+        titulo = request.POST.get('titulo')
+        nivel = request.POST.get('nivel', '1')
+
+        # 1. Cria o registro principal da história (sem dependência de arquivo PDF)
+        historia = Historia.objects.create(
+            titulo=titulo,
+            nivel=nivel
+        )
+
+        texto_completo_acumulado = []
+        bloco_index = 1
+
+        # 2. Varre os blocos enviados na requisição
+        while f'trecho_texto_{bloco_index}' in request.POST:
+            trecho = request.POST.get(f'trecho_texto_{bloco_index}', '').strip()
+            imagem = request.FILES.get(f'imagem_bloco_{bloco_index}')
+
+            if trecho:
+                bloco = BlocoHistoria(
+                    historia=historia,
+                    ordem_bloco=bloco_index,
+                    trecho_texto=trecho
+                )
+                if imagem:
+                    bloco.imagem = imagem
+                
+                bloco.save()
+                texto_completo_acumulado.append(trecho)
+
+            bloco_index += 1
+
+        # 3. Consolida o texto completo da história
+        historia.texto_completo = "\n\n".join(texto_completo_acumulado)
+        historia.save()
+
+        return redirect('palavra:cadastrar_historia')
+
+    historias = Historia.objects.all().order_by('-id')
+    return render(request, 'palavra/cadastrar_historia.html', {'historias': historias})
+
+@login_required
+def listar_historias_por_nivel(request):
+    nivel = request.GET.get('nivel', '1')
+    historias = Historia.objects.filter(nivel=nivel).values('id', 'titulo')
+    
     return JsonResponse({
-        'sucesso': True,
-        'historico_id': historico.id,
-        'aluno_nome': (
-            aluno_selecionado.nome_completo
-            if aluno_selecionado
-            else 'Não Identificado'
-        ),
-        'pontuacao': pontuacao_final,
-        'texto_original': texto_original,
-        'texto_digitado': texto_digitado,
-        'resultado_html': resultado_html,
-        'erros_acentuacao': erros_acentuacao,
-        'erros_palavra': erros_palavra,
-        'palavras_erradas': palavras_erradas,
+        'status': 'sucesso',
+        'historias': list(historias)
     })
 
-  # Traz a lista completa de alunos para o Select no template
-  todos_alunos = Aluno.objects.all().order_by('nome_completo')
+@login_required
+def editar_historia(request, historia_id):
+    """
+    Atualiza título, nível e opcionalmente substitui o arquivo PDF (refazendo os blocos).
+    """
+    historia = get_object_or_404(Historia, id=historia_id)
 
-  return render(
-      request,
-      'palavra/ditado.html',
-      {
-          'frase': frase_obj,
-          'alunos': todos_alunos,
-          'aluno_selecionado': aluno_selecionado,
-      },
-  )
+    if request.method == 'POST':
+        titulo = request.POST.get('titulo', '').strip()
+        nivel = request.POST.get('nivel', '1')
+        novo_pdf = request.FILES.get('arquivo_pdf')
+
+        if not titulo:
+            messages.error(request, 'O título da história não pode ficar em branco.')
+            return redirect('palavra:cadastrar_historia')
+
+        try:
+            historia.titulo = titulo
+            historia.nivel = nivel
+
+            if novo_pdf:
+                # Se enviou novo PDF, remove o antigo do disco e os blocos antigos
+                if historia.arquivo_pdf and os.path.exists(historia.arquivo_pdf.path):
+                    os.remove(historia.arquivo_pdf.path)
+                
+                historia.blocos.all().delete()
+                historia.arquivo_pdf = novo_pdf
+
+            historia.save()  # Dispara o signal de refatiamento se novo_pdf for salvo
+            
+            messages.success(request, f'História "{historia.titulo}" atualizada com sucesso!')
+            return redirect('palavra:cadastrar_historia')
+
+        except Exception as e:
+            messages.error(request, f'Erro ao atualizar história: {e}')
+            return redirect('palavra:cadastrar_historia')
+
+    return redirect('palavra:cadastrar_historia')
+
+@login_required
+def excluir_historia(request, historia_id):
+    if request.method == 'POST':
+        historia = get_object_or_404(Historia, id=historia_id)
+        
+        # Elimina as imagens dos blocos salvas em disco se existirem
+        for bloco in historia.blocos.all():
+            if bloco.imagem:
+                bloco.imagem.delete(save=False)
+        
+        # Apaga o registo no banco de dados (elimina em cascata os blocos)
+        historia.delete()
+        messages.success(request, "História eliminada com sucesso!")
+        
+    return redirect('palavra:cadastrar_historia')

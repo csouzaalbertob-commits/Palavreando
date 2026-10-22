@@ -1,30 +1,38 @@
 {% extends "base/basepg.html" %}
 {% load static %}
 
+{% block title %}Cadastrar Professor — Palavreando{% endblock title %}
+
 {% block main %}
-        <!-- Barra de Navegação Superior -->
+    <!-- Barra de Navegação Superior -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
         <div class="container">
             <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
                 <img src="{% static 'img/logo.png' %}" alt="Logo" width="240" height="140" class="d-inline-block align-text-top me-2" style="object-fit: contain;">
             </a>
             <div class="d-flex align-items-center text-white">
-                <span class="me-3"><i class="bi bi-person-circle me-1"></i> Prof. {{ user.first_name|default:user.username }}</span>
-                <form action="{% url 'autentica:logout' %}" method="post" class="m-0">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-light btn-sm">Sair</button>
-                </form>
+                {% if user.is_authenticated %}
+                    <span class="me-3"><i class="bi bi-person-circle me-1"></i> Prof. {{ user.first_name|default:user.username }}</span>
+                    <form action="{% url 'autentica:logout' %}" method="post" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-light btn-sm">Sair</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'autentica:login' %}" class="btn btn-outline-light btn-sm">Entrar</a>
+                {% endif %}
             </div>
         </div>
     </nav>
-    <div class="container d-flex justify-content-center align-items-center min-vh-100">
-        <div class="card shadow p-4" style="max-width: 500px; width: 100%;">
+
+    <div class="container d-flex justify-content-center align-items-center my-5">
+        <div class="card shadow p-4" style="max-width: 550px; width: 100%;">
             <h3 class="card-title text-center mb-4">Cadastro do Professor</h3>
 
             {% if messages %}
                 {% for message in messages %}
                     <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
                         {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
             {% endif %}
@@ -34,26 +42,31 @@
 
                 {% for field in form %}
                     <div class="mb-3">
-                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                        <input type="{{ field.field.widget.input_type|default:'text' }}" 
-                            name="{{ field.name }}" 
-                            id="{{ field.id_for_label }}" 
-                            class="form-control {% if field.errors %}is-invalid{% endif %}"
-                            value="{{ field.value|default:'' }}">
+                        <label for="{{ field.id_for_label }}" class="form-label fw-semibold">{{ field.label }}</label>
                         
+                        {% if field.field.widget.input_type == "select" or field.field.widget.name == "select" %}
+                            {{ field }}
+                        {% else %}
+                            <input type="{{ field.field.widget.input_type|default:'text' }}" 
+                                name="{{ field.name }}" 
+                                id="{{ field.id_for_label }}" 
+                                class="form-control {% if field.errors %}is-invalid{% endif %}"
+                                value="{{ field.value|default:'' }}">
+                        {% endif %}
+
                         {% if field.help_text %}
                             <div class="form-text text-muted" style="font-size: 0.8rem;">{{ field.help_text }}</div>
                         {% endif %}
                         
                         {% for error in field.errors %}
-                            <div class="invalid-feedback">
+                            <div class="invalid-feedback d-block">
                                 {{ error }}
                             </div>
                         {% endfor %}
                     </div>
                 {% endfor %}
 
-                <button type="submit" class="btn btn-primary w-100 mt-2">Criar Conta</button>
+                <button type="submit" class="btn btn-primary w-100 mt-3">Criar Conta</button>
             </form>
 
             <hr class="my-4">
@@ -63,4 +76,71 @@
             </p>
         </div>
     </div>
-    {% endblock main %}
+{% endblock main %}
+
+{% block script %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const selectCidade = document.getElementById('id_cidade');
+    const selectDRE = document.getElementById('id_dre');
+    const selectEscola = document.getElementById('id_escola');
+
+    // Desabilita DRE e Escola inicialmente se Cidade não estiver selecionada
+    if (selectCidade && !selectCidade.value) {
+        if (selectDRE) selectDRE.disabled = true;
+        if (selectEscola) selectEscola.disabled = true;
+    }
+
+    // 1. Quando mudar a CIDADE -> Busca as DREs
+    selectCidade.addEventListener('change', function () {
+        const cidadeId = this.value;
+
+        // Limpa DRE e Escola
+        selectDRE.innerHTML = '<option value="">Carregando DREs...</option>';
+        selectEscola.innerHTML = '<option value="">Selecione a DRE primeiro</option>';
+        selectEscola.disabled = true;
+
+        if (!cidadeId) {
+            selectDRE.innerHTML = '<option value="">Selecione a Cidade primeiro</option>';
+            selectDRE.disabled = true;
+            return;
+        }
+
+        fetch(`{% url 'autentica:buscar_dres_por_cidade' %}?cidade_id=${cidadeId}`)
+            .then(response => response.json())
+            .then(data => {
+                selectDRE.innerHTML = '<option value="">Selecione a DRE</option>';
+                data.forEach(item => {
+                    selectDRE.innerHTML += `<option value="${item.id}">${item.nome}</option>`;
+                });
+                selectDRE.disabled = false;
+            })
+            .catch(error => console.error('Erro ao buscar DREs:', error));
+    });
+
+    // 2. Quando mudar a DRE -> Busca as ESCOLAS
+    selectDRE.addEventListener('change', function () {
+        const dreId = this.value;
+
+        selectEscola.innerHTML = '<option value="">Carregando Escolas...</option>';
+
+        if (!dreId) {
+            selectEscola.innerHTML = '<option value="">Selecione a DRE primeiro</option>';
+            selectEscola.disabled = true;
+            return;
+        }
+
+        fetch(`{% url 'autentica:buscar_escolas_por_dre' %}?dre_id=${dreId}`)
+            .then(response => response.json())
+            .then(data => {
+                selectEscola.innerHTML = '<option value="">Selecione a Escola</option>';
+                data.forEach(item => {
+                    selectEscola.innerHTML += `<option value="${item.id}">${item.nome}</option>`;
+                });
+                selectEscola.disabled = false;
+            })
+            .catch(error => console.error('Erro ao buscar Escolas:', error));
+    });
+});
+</script>
+{% endblock script %}

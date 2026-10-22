@@ -1,303 +1,317 @@
-from collections import Counter, defaultdict
 import json
+from collections import Counter, defaultdict
+from django.db.models import Count
 
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.db.models import F, Sum, Value
+from django.db.models import F, Sum, Value, Avg, Max, Prefetch
 from django.db.models.functions import Coalesce
 from django.shortcuts import redirect, render
+from django.http import JsonResponse
 
 from alunos.models import Aluno, ResultadoLeitura
-from palavra.models import HistoricoDitado
+from palavra.models import HistoricoDitado, ResultadoOuvirEFalar, RespostaCompreensao, Historia
 from .forms import (
     AtualizarProfessorForm,
     CadastroProfessorForm,
     PerfilProfessorForm,
 )
-from .models import PerfilProfessor
+from .models import PerfilProfessor, DRE, Escola
 
 app_name = 'autentica'
 
 
 @login_required
 def editar_perfil_professor(request):
-  perfil, _ = PerfilProfessor.objects.get_or_create(usuario=request.user)
+    perfil, _ = PerfilProfessor.objects.get_or_create(usuario=request.user)
 
-  if request.method == 'POST':
-    form = AtualizarProfessorForm(request.POST, instance=request.user)
-    form_perfil = PerfilProfessorForm(
-        request.POST, request.FILES, instance=perfil
+    if request.method == 'POST':
+        form = AtualizarProfessorForm(request.POST, instance=request.user)
+        form_perfil = PerfilProfessorForm(
+            request.POST, request.FILES, instance=perfil
+        )
+
+        if form.is_valid() and form_perfil.is_valid():
+            form.save()
+            form_perfil.save()
+            messages.success(request, 'Seus dados foram atualizados com sucesso!')
+            return redirect('autentica:editar_perfil')
+    else:
+        form = AtualizarProfessorForm(instance=request.user)
+        form_perfil = PerfilProfessorForm(instance=perfil)
+
+    return render(
+        request,
+        'autentica/atualiza_professor.html',
+        {'form': form, 'form_perfil': form_perfil},
     )
-
-    if form.is_valid() and form_perfil.is_valid():
-      form.save()
-      form_perfil.save()
-      messages.success(request, 'Seus dados foram atualizados com sucesso!')
-      return redirect('autentica:editar_perfil')
-  else:
-    form = AtualizarProfessorForm(instance=request.user)
-    form_perfil = PerfilProfessorForm(instance=perfil)
-
-  return render(
-      request,
-      'autentica/atualiza_professor.html',
-      {'form': form, 'form_perfil': form_perfil},
-  )
-
 
 @login_required
 def dashboard(request):
-  total_alunos = Aluno.objects.count()
+    professor = request.user
 
-  alunos = list(Aluno.objects.all().order_by('nome_completo'))
-  todos_resultados = list(
-      ResultadoLeitura.objects.select_related('aluno').all()
-  )
+    # 1. Total de Alunos Cadastrados do Professor Logado
+    alunos = Aluno.objects.filter(professor=professor)
+    total_alunos = alunos.count()
 
-  # 1. AGRUPAMENTO DO HISTÓRICO DE DITADOS POR ALUNO PARA CARDS
-  historicos_qs = HistoricoDitado.objects.select_related('aluno', 'frase').order_by('-data_envio')
+    # 2. Top 10 Alunos do Professor Logado para o Gráfico Combinado
+    # Considera tanto o Desafio 60s quanto o Ouvir e Falar
+    top_alunos = alunos[:10]
 
-  ditados_por_aluno = defaultdict(lambda: {
-      'aluno': None,
-      'total_ditados': 0,
-      'soma_pontuacao': 0,
-      'media_pontuacao': 0,
-      'total_erros_palavra': 0,
-      'total_erros_acentuacao': 0,
-      'frases': []
-  })
+    labels_grafico = []
+    dados_60s = []
+    dados_ouvir_falar = []
+    dados_projecao = []
 
-  for h in historicos_qs:
-      aluno_key = h.aluno.id if h.aluno else 'sem_aluno'
-      aluno_nome = h.aluno.nome_completo if h.aluno else 'Aluno Não Identificado'
+    for aluno in top_alunos:
+        nome_curto = aluno.nome_completo.split()[0] if getattr(aluno, 'nome_completo', None) else str(aluno)
+        labels_grafico.append(nome_curto)
 
-      if ditados_por_aluno[aluno_key]['aluno'] is None:
-          ditados_por_aluno[aluno_key]['aluno'] = h.aluno if h.aluno else {'nome_completo': aluno_nome}
+        # Maior pontuação em cada modalidade
+        max_60s = ResultadoLeitura.objects.filter(aluno=aluno).aggregate(Max('pontuacao_total'))['pontuacao_total__max'] or 0
+        max_ouvir_falar = ResultadoOuvirEFalar.objects.filter(aluno=aluno).aggregate(Max('pontuacao_total'))['pontuacao_total__max'] or 0
 
-      palavras_erradas_list = []
-      if h.palavras_erradas:
-          if isinstance(h.palavras_erradas, str):
-              try:
-                  palavras_erradas_list = json.loads(h.palavras_erradas)
-              except Exception:
-                  palavras_erradas_list = []
-          elif isinstance(h.palavras_erradas, list):
-              palavras_erradas_list = h.palavras_erradas
+        dados_60s.append(max_60s)
+        dados_ouvir_falar.append(max_ouvir_falar)
 
-      ditados_por_aluno[aluno_key]['total_ditados'] += 1
-      ditados_por_aluno[aluno_key]['soma_pontuacao'] += h.pontuacao
-      ditados_por_aluno[aluno_key]['total_erros_palavra'] += h.erros_palavra
-      ditados_por_aluno[aluno_key]['total_erros_acentuacao'] += h.erros_acentuacao
+        # Projeção de evolução estimada em +15% sobre o melhor desempenho combinado
+        maior_combinado = max(max_60s, max_ouvir_falar)
+        projecao = round(maior_combinado * 1.15, 1)
+        dados_projecao.append(projecao)
 
-      ditados_por_aluno[aluno_key]['frases'].append({
-          'texto_original': h.texto_original,
-          'texto_digitado': h.texto_digitado,
-          'pontuacao': h.pontuacao,
-          'erros_palavra': h.erros_palavra,
-          'erros_acentuacao': h.erros_acentuacao,
-          'palavras_erradas': palavras_erradas_list,
-          'data_envio': h.data_envio,
-      })
+    # 3. Lista de Recordes de Leitura com Cálculo Real de Tendência
+    alunos_recordes = []
+    for aluno in alunos:
+        # Busca histórico do Desafio 60s
+        historico_60s = list(ResultadoLeitura.objects.filter(aluno=aluno).order_by('data_realizacao'))
+        # Busca histórico do Ouvir e Falar
+        historico_of = list(ResultadoOuvirEFalar.objects.filter(aluno=aluno).order_by('data_realizacao'))
 
-  cards_alunos_ditado = []
-  for key, dados in ditados_por_aluno.items():
-      if dados['total_ditados'] > 0:
-          dados['media_pontuacao'] = round(dados['soma_pontuacao'] / dados['total_ditados'], 1)
-      cards_alunos_ditado.append(dados)
+        total_t_60s = len(historico_60s)
+        total_t_of = len(historico_of)
+        total_testes = total_t_60s + total_t_of
 
-  # 2. PROCESSAMENTO DOS RECORDES DE LEITURA
-  alunos_recordes = []
+        # Maior pontuação global e data do recorde
+        res_60s_max = ResultadoLeitura.objects.filter(aluno=aluno).order_by('-pontuacao_total').first()
+        res_of_max = ResultadoOuvirEFalar.objects.filter(aluno=aluno).order_by('-pontuacao_total').first()
 
-  for aluno in alunos:
-    resultados_aluno = [r for r in todos_resultados if r.aluno_id == aluno.id]
-    total_testes = len(resultados_aluno)
+        pts_60s = res_60s_max.pontuacao_total if res_60s_max else 0
+        pts_of = res_of_max.pontuacao_total if res_of_max else 0
 
-    if total_testes > 0:
-      resultados_aluno.sort(
-          key=lambda r: (r.pontuacao_total, r.data_realizacao), reverse=True
-      )
-      melhor_resultado = resultados_aluno[0]
-      maior_pontuacao = melhor_resultado.pontuacao_total
-      data_recorde = melhor_resultado.data_realizacao
-
-      resultados_cronologicos = sorted(
-          resultados_aluno, key=lambda r: r.data_realizacao
-      )
-      if len(resultados_cronologicos) >= 2:
-        penultimo = resultados_cronologicos[-2].pontuacao_total
-        ultimo = resultados_cronologicos[-1].pontuacao_total
-        if ultimo > penultimo:
-          tendencia = 'subindo'
-        elif ultimo < penultimo:
-          tendencia = 'caindo'
+        if pts_of > pts_60s:
+            maior_pontuacao = pts_of
+            data_recorde = res_of_max.data_realizacao
         else:
-          tendencia = 'estavel'
-      else:
-        tendencia = 'subindo'
-    else:
-      maior_pontuacao = 0
-      data_recorde = None
-      tendencia = 'estavel'
+            maior_pontuacao = pts_60s
+            data_recorde = res_60s_max.data_realizacao if res_60s_max else None
 
-    alunos_recordes.append({
-        'aluno': aluno,
-        'maior_pontuacao': maior_pontuacao,
-        'data_recorde': data_recorde,
-        'total_testes': total_testes,
-        'tendencia': tendencia,
-    })
+        # --- Lógica de Cálculo de Tendência Real ---
+        # Une todos os testes de ambas as modalidades por data de realização
+        todos_testes = sorted(
+            [{'pts': r.pontuacao_total, 'data': r.data_realizacao} for r in historico_60s] +
+            [{'pts': r.pontuacao_total, 'data': r.data_realizacao} for r in historico_of],
+            key=lambda x: x['data']
+        )
 
-  for item in alunos_recordes:
-    item['media_eficiencia'] = (
-        item['maior_pontuacao'] / item['total_testes']
-        if item['total_testes'] > 0
-        else 0
-    )
+        tendencia = 'sem_dados'
+        taxa_evolucao = 0
 
-  alunos_recordes.sort(
-      key=lambda x: (
-          0 if x['total_testes'] > 0 else 1,
-          -x['media_eficiencia'],
-          x['total_testes'],
-          x['aluno'].nome_completo,
-      )
-  )
+        if len(todos_testes) >= 2:
+            ultimo = todos_testes[-1]['pts']
+            penultimo = todos_testes[-2]['pts']
 
-  top_10_alunos = alunos_recordes[:10]
+            if penultimo > 0:
+                variacao = round(((ultimo - penultimo) / penultimo) * 100)
+            else:
+                variacao = 100 if ultimo > 0 else 0
 
-  # 3. RANKING DE BATALHAS
-  ranking_alunos = (
-      Aluno.objects.annotate(
-          pontos_j1=Coalesce(Sum('partidas_j1__pontos_j1'), Value(0)),
-          pontos_j2=Coalesce(Sum('partidas_j2__pontos_j2'), Value(0)),
-      )
-      .annotate(pontuacao_total=F('pontos_j1') + F('pontos_j2'))
-      .order_by('-pontuacao_total')[:10]
-  )
+            taxa_evolucao = abs(variacao)
+            if variacao > 0:
+                tendencia = 'subindo'
+            elif variacao < 0:
+                tendencia = 'caindo'
+            else:
+                tendencia = 'estavel'
+        elif len(todos_testes) == 1:
+            tendencia = 'inicial'
 
-  # 4. PREPARAÇÃO DO GRÁFICO
-  labels_grafico = []
-  pontuacoes_grafico = []
-  predicoes_grafico = []
+        alunos_recordes.append({
+            'aluno': aluno,
+            'total_testes': total_testes,
+            'maior_pontuacao': maior_pontuacao,
+            'data_recorde': data_recorde,
+            'tendencia': tendencia,
+            'taxa_evolucao': taxa_evolucao,
+        })
 
-  for item in top_10_alunos:
-    aluno = item['aluno']
-    labels_grafico.append(aluno.nome_completo)
-    pontuacoes_grafico.append(item['maior_pontuacao'])
+    # Ordenar lista de recordes pela maior pontuação
+    alunos_recordes.sort(key=lambda x: x['maior_pontuacao'], reverse=True)
 
-    historico_aluno = [r for r in todos_resultados if r.aluno_id == aluno.id]
-    historico_aluno.sort(key=lambda r: r.data_realizacao)
-    historico = [r.pontuacao_total for r in historico_aluno]
-
-    if len(historico) >= 2:
-      n = len(historico)
-      x = list(range(1, n + 1))
-      y = historico
-      sum_x = sum(x)
-      sum_y = sum(y)
-      sum_xy = sum(i * j for i, j in zip(x, y))
-      sum_x2 = sum(i**2 for i in x)
-
-      denom = n * sum_x2 - sum_x**2
-      inclinacao = (n * sum_xy - sum_x * sum_y) / denom if denom != 0 else 0
-      intercepto = (sum_y - inclinacao * sum_x) / n
-
-      proxima_pontuacao = max(0, round(inclinacao * (n + 1) + intercepto, 1))
-      predicoes_grafico.append(proxima_pontuacao)
-    elif len(historico) == 1:
-      predicoes_grafico.append(historico[0])
-    else:
-      predicoes_grafico.append(0)
-
-  # 5. DESTAQUES DA TELA
-  resultados_com_pontos = [
-      r for r in todos_resultados if r.pontuacao_total > 0
-  ]
-
-  if resultados_com_pontos:
-    resultados_com_pontos.sort(
-        key=lambda r: (r.pontuacao_total, r.data_realizacao), reverse=True
-    )
-    melhor_global = resultados_com_pontos[0]
-    pior_global = resultados_com_pontos[-1]
-
-    melhor_aluno = {
-        'nome_completo': melhor_global.aluno.nome_completo,
-        'maior_pontuacao': melhor_global.pontuacao_total,
-        'data_recorde': melhor_global.data_realizacao,
-    }
-
-    aluno_dificuldade = {
-        'nome_completo': pior_global.aluno.nome_completo,
-        'menor_pontuacao': pior_global.pontuacao_total,
-        'data_recorde': pior_global.data_realizacao,
-    }
-  else:
+    # 4. Melhor Aluno e Aluno com Dificuldade do Professor Logado
     melhor_aluno = None
     aluno_dificuldade = None
 
-  # 6. PALAVRAS COM DEMORA
-  contador_demoradas = Counter()
-  for res in todos_resultados:
-    if res.palavras_com_demora:
-      try:
-        demoradas = (
-            json.loads(res.palavras_com_demora)
-            if isinstance(res.palavras_com_demora, str)
-            else res.palavras_com_demora
-        )
-        if isinstance(demoradas, list):
-          for item in demoradas:
-            palavra_texto = (
-                item.get('palavra') if isinstance(item, dict) else item
+    if alunos_recordes:
+        melhor_item = alunos_recordes[0]
+        if melhor_item['maior_pontuacao'] > 0:
+            melhor_aluno = {
+                'nome_completo': melhor_item['aluno'].nome_completo,
+                'maior_pontuacao': melhor_item['maior_pontuacao'],
+                'data_recorde': melhor_item['data_recorde'],
+            }
+
+        pior_item = alunos_recordes[-1]
+        aluno_dificuldade = {
+            'nome_completo': pior_item['aluno'].nome_completo,
+            'menor_pontuacao': pior_item['maior_pontuacao'],
+            'data_recorde': pior_item['data_recorde'],
+        }
+
+    # 5. Ranking de Batalhas apenas dos Alunos do Professor Logado
+    ranking_alunos = Aluno.objects.filter(professor=professor).annotate(
+        pontuacao_total=Coalesce(Sum('resultados__pontuacao_total'), Value(0))
+    ).order_by('-pontuacao_total')[:5]
+
+    # 6. Palavras com Maior Demora (Consolida registros do 60s e do Ouvir e Falar)
+    contador_demora = Counter()
+
+    # Leitura do modelo de 60s
+    resultados_60s = ResultadoLeitura.objects.filter(aluno__professor=professor).exclude(palavras_com_demora='')
+    for res in resultados_60s:
+        if res.palavras_com_demora:
+            try:
+                palavras = json.loads(res.palavras_com_demora) if isinstance(res.palavras_com_demora, str) else res.palavras_com_demora
+                for p in palavras:
+                    texto_p = p.get('palavra', '') if isinstance(p, dict) else str(p)
+                    if texto_p:
+                        contador_demora[texto_p.upper()] += 1
+            except Exception:
+                pass
+
+    # Leitura do modelo de Ouvir e Falar
+    resultados_of = ResultadoOuvirEFalar.objects.filter(aluno__professor=professor).exclude(palavras_com_demora=[])
+    for res in resultados_of:
+        if res.palavras_com_demora:
+            try:
+                palavras = json.loads(res.palavras_com_demora) if isinstance(res.palavras_com_demora, str) else res.palavras_com_demora
+                for p in palavras:
+                    texto_p = p.get('palavra', '') if isinstance(p, dict) else str(p)
+                    if texto_p:
+                        contador_demora[texto_p.upper()] += 1
+            except Exception:
+                pass
+
+    palavras_dificuldade = [
+        {'texto': p, 'total_atrasos': qtd} for p, qtd in contador_demora.most_common(5)
+    ]
+
+    # 7. Histórico de Ditados Aninhado por Aluno
+    alunos_ditado = (
+        Aluno.objects.filter(professor=professor, historicos_ditado__isnull=False)
+        .prefetch_related(
+            Prefetch(
+                'historicos_ditado',
+                queryset=HistoricoDitado.objects.select_related('frase').order_by('-data_registro')
             )
-            if palavra_texto:
-              contador_demoradas[str(palavra_texto).upper()] += 1
-      except Exception:
-        continue
+        )
+        .distinct()
+    )
 
-  palavras_mais_demoradas = contador_demoradas.most_common(5)
-  palavras_dificuldade = [
-      {'texto': palavra, 'total_atrasos': quantidade}
-      for palavra, quantidade in contador_demoradas.most_common(5)
-  ]
+    cards_alunos_ditado = []
+    for aluno in alunos_ditado:
+        historicos = list(aluno.historicos_ditado.all())
+        qtd_ditados = len(historicos)
+        
+        if qtd_ditados > 0:
+            total_pontos = sum(h.pontuacao for h in historicos)
+            total_tempo = sum(getattr(h, 'tempo_gasto', 0) for h in historicos)
+            media_pontos = round(total_pontos / qtd_ditados)
 
-  context = {
-      'total_alunos': total_alunos,
-      'alunos': alunos,
-      'alunos_recordes': alunos_recordes,
-      'cards_alunos_ditado': cards_alunos_ditado,
-      'melhor_aluno': melhor_aluno,
-      'aluno_dificuldade': aluno_dificuldade,
-      'nomes_alunos_json': json.dumps(labels_grafico),
-      'pontos_atuais_json': json.dumps(pontuacoes_grafico),
-      'chart_predicoes': json.dumps(predicoes_grafico),
-      'palavras_mais_demoradas': palavras_mais_demoradas,
-      'palavras_dificuldade': palavras_dificuldade,
-      'ranking_alunos': ranking_alunos,
-  }
+            cards_alunos_ditado.append({
+                'aluno': aluno,
+                'historicos': historicos,
+                'qtd_ditados': qtd_ditados,
+                'media_pontos': media_pontos,
+                'tempo_total': total_tempo,
+            })
 
-  return render(request, 'autentica/dashboard.html', context)
+    #8. Leitura Dinamica de Compreensão (Histórias)
+    # Busca leituras realizadas e agrupa os blocos lidos por aluno/história
+    leituras_recentes = RespostaCompreensao.objects.select_related('aluno', 'bloco__historia')\
+        .order_by('-data_realizacao')
+    # Estrutura os dados agrupando por Aluno e História
+    historico_leituras = {}
+    for resp in leituras_recentes:
+        aluno = resp.aluno
+        historia = resp.bloco.historia
+        chave = (aluno.id, historia.id)
 
+        if chave not in historico_leituras:
+            historico_leituras[chave] = {
+                'aluno_nome': aluno.nome_completo,
+                'historia_titulo': historia.titulo,
+                'total_blocos_historia': historia.blocos.count(),
+                'blocos_lidos': 0,
+                'respostas': [],
+                'ultima_data': resp.data_realizacao
+            }
+
+        historico_leituras[chave]['blocos_lidos'] += 1
+        historico_leituras[chave]['respostas'].append({
+            'ordem_bloco': resp.bloco.ordem_bloco,
+            'trecho_texto': resp.bloco.trecho_texto,
+            'resposta_aluno': resp.resposta_aluno,
+            'tipo_resposta': resp.tipo_resposta,
+            'tempo': resp.tempo_resposta_segundos
+        })
+
+    # Contexto Completo
+    context = {
+        'total_alunos': total_alunos,
+        'melhor_aluno': melhor_aluno,
+        'aluno_dificuldade': aluno_dificuldade,
+        'alunos_recordes': alunos_recordes,
+        'ranking_alunos': ranking_alunos,
+        'palavras_dificuldade': palavras_dificuldade,
+        'cards_alunos_ditado': cards_alunos_ditado,
+        'labels_grafico_json': json.dumps(labels_grafico),
+        'dados_60s_json': json.dumps(dados_60s),
+        'dados_ouvir_falar_json': json.dumps(dados_ouvir_falar),
+        'dados_projecao_json': json.dumps(dados_projecao),
+        'leituras': list(historico_leituras.values()),
+    }
+
+    return render(request, 'autentica/dashboard.html', context)
+
+def buscar_dres_por_cidade(request):
+    cidade_id = request.GET.get('cidade_id')
+    dres = DRE.objects.filter(cidade_id=cidade_id).values('id', 'nome')
+    return JsonResponse(list(dres), safe=False)
+
+def buscar_escolas_por_dre(request):
+    dre_id = request.GET.get('dre_id')
+    escolas = Escola.objects.filter(dre_id=dre_id).values('id', 'nome')
+    return JsonResponse(list(escolas), safe=False)
 
 def cadastro_professor(request):
-  if request.user.is_authenticated:
-    return redirect('autentica:login')
+    if request.user.is_authenticated:
+        return redirect('autentica:dashboard')
 
-  if request.method == 'POST':
-    form = CadastroProfessorForm(request.POST)
-    if form.is_valid():
-      user = form.save()
-      login(request, user, backend='django.contrib.auth.backends.ModelBackend')
-      messages.success(
-          request,
-          f'Conta criada com sucesso! Bem-vindo, Prof. {user.first_name}.',
-      )
-      return redirect('autentica:login')
+    if request.method == 'POST':
+        form = CadastroProfessorForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+            messages.success(
+                request,
+                f'Conta criada com sucesso! Bem-vindo, Prof.'
+                f' {user.first_name or user.username}.',
+            )
+            return redirect('autentica:dashboard')
+        else:
+            messages.error(request, 'Por favor, corrija os erros apontados no formulário.')
     else:
-      messages.error(request, 'Por favor, corrija os erros abaixo.')
-  else:
-    form = CadastroProfessorForm()
+        form = CadastroProfessorForm()
 
-  return render(request, 'autentica/cadastro_professor.html', {'form': form})
+    return render(request, 'autentica/cadastro_professor.html', {'form': form})

@@ -1,75 +1,72 @@
-{% extends "base/basepg.html" %}
+{% extends 'base/basepg.html' %}
 {% load static %}
 
+{% block title %}Gerenciar Palavras — Palavreando{% endblock title %}
+
 {% block main %}
-<div class="container py-4">
-    <!-- Cabeçalho -->
-    <div class="d-flex justify-content-between align-items-center mb-4" style="background-color: #0d6efd; padding-bottom: 4px;">
-        <div class="titulo-carteirinha">
-            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
-                <img src="{% static 'img/logo.png' %}" alt="Logo" width="200" height="auto" class="d-inline-block align-text-top me-2" style="object-fit: contain;">
-            </a>
-        </div>
-        <h2 class="fw-bold text-primary">
-            <h1 style="color: #fff; font-family: 'Poppins', sans-serif;">Gerenciador de Palavras</h1>
-        </h2>
-        <div class="d-flex gap-2">
-            <a href="{% url 'palavra:selecionar_aluno' %}" target="_blank" class="btn btn-outline-primary fw-semibold">
-                <i class="bi bi-play-circle-fill me-1"></i> Abrir Tela do Aluno
-            </a>
-            <a href="{% url 'autentica:dashboard' %}" class="btn btn-warning">
-                <i class="bi bi-arrow-left me-1"></i> Voltar
-            </a>
-        </div>
-    </div>
-
-    <!-- Formulário de Inserção com Dificuldade -->
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body p-4">
-            <h5 class="card-title mb-3 fw-bold"><i class="bi bi-plus-circle me-1"></i> Inserir Nova Palavra / Pseudopalavra</h5>
-            <form method="post" class="row g-3">
-                {% csrf_token %}
-                
-                <div class="col-md-5">
-                    <label class="form-label fw-semibold">Palavra / Pseudopalavra</label>
-                    {{ form.texto }}
+    <div class="container py-4">
+        <header class="bg-primary text-white py-3 shadow-sm mb-4">
+            <div class="container d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+                            <img src="{% static 'img/logo.png' %}" alt="Logo" width="200" height="auto" class="d-inline-block align-text-top me-2" style="object-fit: contain;">
+                        </a>
+                    <h2 class="h4 mb-0 fw-bold fonte-garrafal text-white">Gerenciar Palavras</h2>
                 </div>
-                
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">Classificação</label>
-                    {{ form.tipo }}
-                </div>
+                <a href="{% url 'autentica:dashboard' %}" class="btn btn-light text-primary fw-bold rounded-pill">
+                    <i class="bi bi-arrow-left-circle-fill me-1"></i> Voltar ao Dashboard
+                </a>
+            </div>
+        </header>
 
-                <div class="col-md-2">
-                    <label class="form-label fw-semibold">Dificuldade</label>
-                    {{ form.dificuldade }}
-                </div>
+        <!-- Formulário de Inserção com Dificuldade -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-3 fw-bold"><i class="bi bi-plus-circle me-1"></i> Inserir Nova Palavra / Pseudopalavra</h5>
+                <form method="post" class="row g-3">
+                    {% csrf_token %}
+                    
+                    <div class="col-md-5">
+                        <label class="form-label fw-semibold">Palavra / Pseudopalavra</label>
+                        {{ form.texto }}
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Classificação</label>
+                        {{ form.tipo }}
+                    </div>
 
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-success w-100 fw-bold py-2">
-                        <i class="bi bi-plus-lg me-1"></i> Adicionar
-                    </button>
-                </div>
-            </form>
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold">Dificuldade</label>
+                        {{ form.dificuldade }}
+                    </div>
+
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-success w-100 fw-bold py-2">
+                            <i class="bi bi-plus-lg me-1"></i> Adicionar
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-    </div>
 
-    <!-- Tabela de Palavras Atualizada -->
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-            <h6 class="mb-0 fw-bold text-secondary"><i class="bi bi-list-stars me-1"></i> Palavras Cadastradas</h6>
-            <span class="badge bg-primary fs-6">{{ palavras.count }} Itens</span>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
+        <!-- Tabela de Palavras Atualizada -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-secondary"><i class="bi bi-list-stars me-1"></i> Palavras Cadastradas</h6>
+                <span class="badge bg-primary fs-6">{{ palavras.count }} Itens</span>
+            </div>
+            <div class="card-body p-0">
+            <!-- 1. Define a altura e a rolagem no wrapper da tabela -->
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
                 <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+                    <thead class="table-light position-sticky top-0 z-3">
                         <tr>
-                            <th class="ps-4">Texto Cadastrado</th>
-                            <th>Classificação</th>
-                            <th>Dificuldade / Pontuação</th>
-                            <th>Cadastrado por</th>
-                            <th class="text-center">Ações</th>
+                            <th class="ps-4 bg-light">Texto Cadastrado</th>
+                            <th class="bg-light">Classificação</th>
+                            <th class="bg-light">Dificuldade / Pontuação</th>
+                            <th class="bg-light">Cadastrado por</th>
+                            <th class="text-center bg-light">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -101,9 +98,9 @@
                             <td class="text-muted">Prof. {{ p.professor.first_name|default:p.professor.username }}</td>
                             <td class="text-center">
                                 <a href="{% url 'palavra:deletar_palavra' p.id %}" 
-                                   class="btn btn-outline-danger btn-sm" 
-                                   onclick="return confirm('Tem certeza que deseja excluir esta palavra?');"
-                                   title="Excluir Palavra">
+                                class="btn btn-outline-danger btn-sm" 
+                                onclick="return confirm('Tem certeza que deseja excluir esta palavra?');"
+                                title="Excluir Palavra">
                                     <i class="bi bi-trash-fill"></i>
                                 </a>
                             </td>
@@ -120,6 +117,8 @@
                 </table>
             </div>
         </div>
+        </div>
     </div>
-</div>
-{% endblock main %}
+    {% endblock %}
+    {% block script %}
+    {% endblock %}

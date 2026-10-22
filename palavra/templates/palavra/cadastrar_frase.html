@@ -1,139 +1,121 @@
 {% extends "base/basepg.html" %}
 {% load static %}
 
+{% block title %}Cadastrar Frase — Palavreando{% endblock title %}
+
 {% block main %}
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-        <div class="container">
-            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
-                <img src="{% static 'img/logo.png' %}" alt="Logo" width="240" height="140" class="d-inline-block align-text-top me-2" style="object-fit: contain;">
+    <header class="bg-primary text-white py-3 shadow-sm mb-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+                        <img src="{% static 'img/logo.png' %}" alt="Logo" width="200" height="auto" class="d-inline-block align-text-top me-2" style="object-fit: contain;">
+                    </a>
+                <h2 class="h4 mb-0 fw-bold fonte-garrafal text-white">Gerenciar Frases</h2>
+            </div>
+            <a href="{% url 'autentica:dashboard' %}" class="btn btn-light text-primary fw-bold rounded-pill">
+                <i class="bi bi-arrow-left-circle-fill me-1"></i> Voltar ao Dashboard
             </a>
-            <div class="d-flex align-items-center text-white">
-                <span class="me-3"><i class="bi bi-person-circle me-1"></i> Prof. {{ user.first_name|default:user.username }}</span>
-                <form action="{% url 'autentica:logout' %}" method="post" class="m-0">
+        </div>
+    </header>
+
+    <div class="container py-3" style="max-width: 900px;">
+        
+        <!-- Mensagens do Django (Sucesso/Alerta/Erro) -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
+                    <i class="bi bi-info-circle-fill me-2"></i> {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Cartão de Cadastro -->
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-header bg-primary text-white p-3 rounded-top-4">
+                <h4 class="mb-0 fw-bold"><i class="bi bi-plus-circle-fill me-2"></i>Cadastrar Nova Frase</h4>
+            </div>
+            <div class="card-body p-4">
+                <form method="POST" action="{% url 'palavra:cadastrar_frase' %}">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-light btn-sm">Sair</button>
+                    
+                    <div class="mb-3">
+                        <label for="texto" class="form-label fw-bold text-dark">Frase:</label>
+                        <textarea name="texto" id="texto" class="form-control" rows="3" placeholder="Digite a frase aqui..." required></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="nivel" class="form-label fw-bold text-dark">Nível de Dificuldade:</label>
+                        <select name="nivel" id="nivel" class="form-select" required>
+                            <option value="1" selected>Nível 1 - Fácil</option>
+                            <option value="2">Nível 2 - Médio</option>
+                            <option value="3">Nível 3 - Difícil</option>
+                        </select>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold">
+                            <i class="bi bi-check-lg me-1"></i> Salvar Frase
+                        </button>
+                    </div>
                 </form>
             </div>
-            <div class="d-flex">
-                <a href="{% url 'base:home' %}" class="btn btn-outline-light btn-sm rounded-pill px-3">
-                    <i class="bi bi-arrow-left me-1"></i> Voltar ao Início
-                </a>
-            
-                <a href="{% url 'autentica:dashboard' %}" class="btn btn-outline-light btn-sm rounded-pill px-3">
-                    <i class="bi bi-arrow-left-circle me-1"></i> Voltar ao Dashboard
-                </a>
-            </div>
         </div>
-    </nav>
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
 
-            <!-- Mensagens de Alerta/Sucesso -->
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-success alert-dismissible fade show rounded-4 shadow-sm" role="alert">
-                        <i class="bi bi-check-circle-fill me-2"></i>{{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fechar"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
-
-            <!-- Form Card -->
-            <div class="card border-0 shadow-sm rounded-4 mb-4">
-                <div class="card-header bg-primary text-white py-3 rounded-top-4">
-                    <h4 class="mb-0 fw-bold"><i class="bi bi-journal-plus me-2"></i>Cadastrar Nova Frase ou Parágrafo</h4>
-                </div>
-                <div class="card-body p-4">
-                    <form method="post">
-                        {% csrf_token %}
-                        
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">{{ form.nivel.label }}</label>
-                            {{ form.nivel }}
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">{{ form.texto.label }}</label>
-                            {{ form.texto }}
-                            <div class="form-text">
-                                Certifique-se de incluir a pontuação e acentuação corretas na frase.
-                            </div>
-                        </div>
-
-                        <div class="d-flex justify-content-between align-items-center">
-                            <a href="{% url 'autentica:dashboard' %}" class="btn btn-outline-secondary btn-lg rounded-pill px-4">
-                                <i class="bi bi-arrow-left me-1"></i> Voltar ao Painel
-                            </a>
-                            <button type="submit" class="btn btn-primary btn-lg rounded-pill px-5 fw-bold">
-                                <i class="bi bi-plus-lg me-1"></i> Salvar no Ditado
-                            </button>
-                        </div>
-                    </form>
-                </div>
+        <!-- Tabela de Frases Cadastradas -->
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-white p-3 border-bottom-0">
+                <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-journal-text me-2 text-primary"></i>Minhas Frases Cadastradas</h5>
             </div>
-
-            <!-- Tabela de Frases Cadastradas -->
-            <div class="card border-0 shadow-sm rounded-4">
-                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold text-dark">
-                        <i class="bi bi-card-text me-2"></i>Frases Cadastradas
-                    </h5>
-                    <span class="badge bg-primary rounded-pill fs-6">{{ frases.count }} frases</span>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead class="table-light">
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">#</th>
+                                <th>Frase</th>
+                                <th>Dificuldade</th>
+                                <th class="text-end pe-3">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for frase in frases %}
                                 <tr>
-                                    <th style="width: 15%;">Nível</th>
-                                    <th>Frase / Parágrafo</th>
-                                    <th style="width: 18%;">Data de Criação</th>
-                                    <th style="width: 10%;" class="text-center">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in frases %}
-                                    <tr>
-                                        <td>
-                                            {% if item.nivel == '1' %}
-                                                <span class="badge bg-success">Nível 1 - Fácil</span>
-                                            {% elif item.nivel == '2' %}
-                                                <span class="badge bg-warning text-dark">Nível 2 - Médio</span>
-                                            {% else %}
-                                                <span class="badge bg-danger">Nível 3 - Difícil</span>
-                                            {% endif %}
-                                        </td>
-                                        <td><p class="mb-0 text-break">{{ item.texto }}</p></td>
-                                        <td class="text-muted small">{{ item.criado_em|date:"d/m/Y H:i" }}</td>
-                                        <td class="text-center">
-                                            <a href="{% url 'palavra:eliminar_frase' item.id %}" 
-                                               class="btn btn-outline-danger btn-sm rounded-circle"
-                                               onclick="return confirm('Deseja realmente eliminar esta frase?');"
-                                               title="Eliminar Frase">
+                                    <td class="ps-3 text-muted">{{ forloop.counter }}</td>
+                                    <td class="fw-bold text-dark">{{ frase.texto }}</td>
+                                    <td>
+                                        {% if frase.nivel == 1 or frase.nivel == "1" %}
+                                            <span class="badge bg-success">Nível 1 - Fácil</span>
+                                        {% elif frase.nivel == 2 or frase.nivel == "2" %}
+                                            <span class="badge bg-warning text-dark">Nível 2 - Médio</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Nível 3 - Difícil</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end pe-3">
+                                        <form method="POST" action="{% url 'palavra:excluir_frase' frase.id %}" onsubmit="return confirm('Tem certeza que deseja excluir esta frase?');" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-outline-danger btn-sm rounded-circle" title="Excluir">
                                                 <i class="bi bi-trash-fill"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                {% empty %}
-                                    <tr>
-                                        <td colspan="4" class="text-center py-4 text-muted">
-                                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-                                            Nenhuma frase cadastrada no momento. Preencha o formulário acima para adicionar a primeira!
-                                        </td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">
+                                        Nenhuma frase cadastrada ainda.
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-
         </div>
-    </div>
-</div>
-{% endblock main %}
 
-{% block script %}
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-{% endblock script %}
+    </div>
+{% endblock main %}
+{% block scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock scripts %}

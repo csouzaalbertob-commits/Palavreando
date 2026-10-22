@@ -1,6 +1,17 @@
-{% extends "base/basepg.html" %}
 {% load static %}
-        {% block style %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Painel do Professor</title>
+    <!-- Bootstrap 5 CSS e Ícones -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="shortcut icon" href="{% static 'img/favicon.ico' %}" type="image/x-icon">
+    <link rel="icon" href="{% static 'img/favicon.png' %}" type="image/png">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
         .full-width-section {
             width: 100vw;
             position: relative;
@@ -14,9 +25,10 @@
             overflow-y: auto;
             scrollbar-width: thin;
         }
-        {% endblock style %}
-         {% block main %}
+    </style>
+</head>
 <body class="bg-light">
+
     <!-- Modal de Solicitação Recebida no Lado do Professor -->
     <div id="modalSolicitacaoAluno" class="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-none d-flex align-items-center justify-content-center" style="z-index: 1060;">
         <div class="card shadow-lg border-0 rounded-4 p-4 bg-white text-dark" style="max-width: 480px; width: 90%;">
@@ -52,7 +64,7 @@
             </div>
         </div>
     </nav>
-   
+
     <div class="container py-4">
 
         <!-- Dados do Usuário Logado -->
@@ -66,8 +78,9 @@
                         </div>
                         <div class="d-flex gap-2">
                             <a href="{% url 'alunos:cadastrar_aluno' %}" class="btn btn-success"><i class="bi bi-person-plus-fill me-1"></i> Cadastrar Aluno</a>
-                            <a href="{% url 'palavra:gerenciar_palavras' %}" class="btn btn-danger"><i class="bi bi-person-plus-fill me-1"></i> Inserir Palavra</a>
-                            <a href="{% url 'palavra:cadastrar_frase' %}" class="btn btn-info"><i class="bi bi-person-plus-fill me-1"></i> Inserir Frases</a>
+                            <a href="{% url 'palavra:gerenciar_palavras' %}" class="btn btn-danger"><i class="bi bi-file-earmark-text me-1"></i> Inserir Palavra</a>
+                            <a href="{% url 'palavra:cadastrar_frase' %}" class="btn btn-info text-white"><i class="bi bi-quote me-1"></i> Inserir Frases</a>
+                            <a href="{% url 'palavra:cadastrar_historia' %}" class="btn text-white" style="background-color: #6f42c1;"><i class="bi bi-book-half me-1"></i> Inserir História</a>
                             <a href="{% url 'base:home' %}" class="btn btn-warning text-dark"><i class="bi bi-house-door-fill me-1"></i> Voltar Início</a>
                         </div>
                     </div>
@@ -150,9 +163,9 @@
         </div>
 
         <!-- Painel Tabela de Recordes e Alunos -->
-        <div class="card border-0 shadow-sm">
+        <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0 fw-bold"><i class="bi bi-trophy me-2 text-warning"></i>Recordes de Leitura por Aluno</h5>
+                <h5 class="card-title mb-0 fw-bold"><i class="bi bi-trophy me-2 text-warning"></i>Recordes de Leitura por Aluno 60s</h5>
                 <span class="badge bg-secondary">{{ total_alunos }} Cadastrados</span>
             </div>
             <div class="card-body p-0">
@@ -198,7 +211,7 @@
                                 </td>
 
                                 <!-- Série e Turma -->
-                                <td>{{ item.aluno.serie|default:"" }} - {{ item.aluno.turma }}</td>
+                                <td>{{ item.aluno.serie|default:"" }} - {{ item.aluno.turma|default:"-" }}</td>
 
                                 <!-- Total de Avaliações -->
                                 <td class="text-center">
@@ -207,17 +220,25 @@
 
                                 <!-- Tendência de Crescimento da Pronúncia -->
                                 <td class="text-center">
-                                    {% if item.tendencia == 'subindo' or item.tendencia_valor > 0 %}
+                                    {% if item.tendencia == 'subindo' %}
                                         <span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1">
-                                            <i class="bi bi-graph-up-arrow me-1"></i> Crescimento (+{{ item.taxa_evolucao|default:"12" }}%)
+                                            <i class="bi bi-graph-up-arrow me-1"></i> Crescimento (+{{ item.taxa_evolucao }}%)
+                                        </span>
+                                    {% elif item.tendencia == 'caindo' %}
+                                        <span class="badge bg-danger bg-opacity-10 text-danger border border-danger px-2 py-1">
+                                            <i class="bi bi-graph-down-arrow me-1"></i> Queda (-{{ item.taxa_evolucao }}%)
                                         </span>
                                     {% elif item.tendencia == 'estavel' %}
                                         <span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-2 py-1">
                                             <i class="bi bi-dash-lg me-1"></i> Estável
                                         </span>
+                                    {% elif item.tendencia == 'inicial' %}
+                                        <span class="badge bg-info bg-opacity-10 text-info border border-info px-2 py-1">
+                                            <i class="bi bi-flag me-1"></i> Inicial (1 teste)
+                                        </span>
                                     {% else %}
-                                        <span class="badge bg-success bg-opacity-10 text-success border border-success px-2 py-1">
-                                            <i class="bi bi-graph-up-arrow me-1"></i> Em Evolução
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary px-2 py-1">
+                                            <i class="bi bi-hourglass me-1"></i> Sem Dados
                                         </span>
                                     {% endif %}
                                 </td>
@@ -267,21 +288,21 @@
             </div>
         </div>
 
-        <!-- Gráfico de Desempenho Geral -->
-        <div class="card border-0 shadow-sm mt-4">
-            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0 fw-bold">
-                    <i class="bi bi-graph-up-arrow me-2 text-primary"></i>Top 10 Alunos: Desempenho Atual vs. Projeção de Evolução
+        <!-- Gráfico de Desempenho Geral por Modalidade -->
+        <div class="card p-4 shadow-sm rounded-4 mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold text-dark mb-0">
+                    <i class="bi bi-graph-up-arrow text-primary me-2"></i>Top 10 Alunos: Desempenho por Modalidade vs. Projeção (60s + Ouvir e Falar)
                 </h5>
                 <span class="badge bg-info text-dark">Análise Preditiva de Pronúncia</span>
             </div>
-            <div class="card-body">
-                <canvas id="graficoEvolucao" style="max-height: 380px;"></canvas>
+            <div style="height: 320px;">
+                <canvas id="graficoEvolucao"></canvas>
             </div>
         </div>
 
         <!-- SEÇÃO DOS DOIS CARDS LADO A LADO -->
-        <div class="row g-4 mt-2">
+        <div class="row g-4 mt-2 mb-4">
             <!-- Card 1: Palavras com Maior Demora -->
             <div class="col-md-6">
                 <div class="card shadow-sm border-0 h-100">
@@ -303,7 +324,7 @@
                 </div>
             </div>
 
-            <!-- Card 2: Ranking de Pontuação dos Alunos (Batalhas) -->
+            <!-- Card 2: Ranking de Pontuação dos Alunos -->
             <div class="col-md-6">
                 <div class="card shadow-sm border-0 h-100">
                     <div class="card-header bg-primary text-white fw-bold">
@@ -334,7 +355,7 @@
                                                     {% if aluno_rank.foto %}
                                                         <img src="{{ aluno_rank.foto.url }}" alt="{{ aluno_rank.nome_completo }}" class="rounded-circle me-2" style="width: 38px; height: 38px; object-fit: cover;">
                                                     {% else %}
-                                                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2" style="width: 38px; height: 38px; font-weight: bold;">
+                                                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-2 fw-bold" style="width: 38px; height: 38px;">
                                                             {{ aluno_rank.nome_completo|slice:":1" }}
                                                         </div>
                                                     {% endif %}
@@ -357,101 +378,225 @@
                 </div>
             </div>
         </div>
-        <!-- Nova Seção: Histórico Recente de Ditados (100% de Largura com Scroll Vertical) -->
+
+        <!-- Seção: Histórico Recente de Ditados -->
         <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 my-3">
+            <div class="col-12 w-100 mb-2">
+                <div class="card border-0 shadow-sm rounded-4 p-3 bg-light">
+                    <h5 class="fw-bold text-primary mb-0"><i class="bi bi-clock-history me-2"></i>Histórico Recente de Ditados</h5>
+                    <small class="text-muted">Desempenho dos alunos na escrita por ditado eletrônico</small>
+                </div>
+            </div>
+
             {% for item in cards_alunos_ditado %}
-                <div class="col">
-                    <div class="card h-100 shadow-sm border-0 rounded-4">
-                        <!-- Cabeçalho do Card do Aluno -->
-                        <div class="card-header bg-primary text-white p-3 rounded-top-4 d-flex justify-content-between align-items-center">
-                            <div class="d-flex align-items-center gap-2">
-                                <div class="avatar-circle bg-white text-primary fw-bold rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                    {{ item.aluno.nome_completo|default:"A"|slice:":1" }}
-                                </div>
-                                <div>
-                                    <h5 class="mb-0 fw-bold fs-6">{{ item.aluno.nome_completo }}</h5>
-                                    <small class="text-white-50">{{ item.total_ditados }} ditado(s) realizado(s)</small>
-                                </div>
+            <div class="col">
+                <div class="card border-0 shadow-sm rounded-4 mb-4 h-100">
+                    
+                    <!-- Cabeçalho do Card (Clicável para recolher/expandir) -->
+                    <div class="card-header bg-primary text-white p-3 rounded-top-4 d-flex justify-content-between align-items-center" 
+                        data-bs-toggle="collapse" 
+                        data-bs-target="#collapseAluno{{ item.aluno.id }}" 
+                        aria-expanded="true" 
+                        aria-controls="collapseAluno{{ item.aluno.id }}"
+                        style="cursor: pointer; user-select: none;">
+                        
+                        <div class="d-flex align-items-center gap-3">
+                            <div>
+                                {% if item.aluno.foto %}
+                                    <img src="{{ item.aluno.foto.url }}" alt="{{ item.aluno.nome_completo }}" class="rounded-circle border border-2 border-white shadow-sm" style="width: 45px; height: 45px; object-fit: cover;">
+                                {% else %}
+                                    <div class="bg-white text-primary rounded-circle fw-bold d-flex align-items-center justify-content-center shadow-sm" style="width: 45px; height: 45px; font-size: 1.1rem;">
+                                        {{ item.aluno.nome_completo|slice:":1"|upper }}
+                                    </div>
+                                {% endif %}
                             </div>
-                            <span class="badge bg-light text-primary fs-6">{{ item.media_pontuacao }} pts (Média)</span>
+                            <div>
+                                <h5 class="mb-0 fw-bold">{{ item.aluno.nome_completo }}</h5>
+                                <small class="text-white-50">
+                                    <strong>{{ item.qtd_ditados }}</strong> ditado(s) realizado(s)
+                                </small>
+                            </div>
                         </div>
 
-                        <!-- Resumo de Erros / Indicadores -->
-                        <div class="card-body">
-                            <div class="row text-center mb-3 g-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-white text-primary fs-6 px-3 py-2 rounded-pill shadow-sm">
+                                <strong>{{ item.media_pontos }}</strong> pts
+                            </span>
+                            <i class="bi bi-chevron-down text-white fs-5 ms-1"></i>
+                        </div>
+                    </div>
+
+                    <!-- Corpo do Card -->
+                    <div class="collapse show" id="collapseAluno{{ item.aluno.id }}">
+                        <div class="card-body p-4">
+                            <div class="row g-2 mb-3">
                                 <div class="col-6">
-                                    <div class="p-2 bg-light rounded-3 border">
-                                        <small class="text-muted d-block">Erros Ortográficos</small>
-                                        <span class="fw-bold text-danger fs-5">{{ item.total_erros_palavra }}</span>
+                                    <div class="border rounded-3 p-2 text-center bg-light">
+                                        <small class="text-muted d-block">Tempo Total</small>
+                                        <strong class="text-dark">{{ item.tempo_total }}s</strong>
                                     </div>
                                 </div>
                                 <div class="col-6">
-                                    <div class="p-2 bg-light rounded-3 border">
-                                        <small class="text-muted d-block">Erros Acentuação</small>
-                                        <span class="fw-bold text-warning fs-5">{{ item.total_erros_acentuacao }}</span>
+                                    <div class="border rounded-3 p-2 text-center bg-light">
+                                        <small class="text-muted d-block">Média de Pontos</small>
+                                        <strong class="text-primary">{{ item.media_pontos }} pts</strong>
                                     </div>
                                 </div>
                             </div>
 
-                            <h6 class="fw-bold text-secondary mb-2">
-                                <i class="bi bi-journal-text me-1"></i>Frases Ouvidas & Respostas:
+                            <h6 class="fw-bold text-dark mb-3">
+                                <i class="bi bi-list-task me-1"></i> Frases Ouvidas & Respostas:
                             </h6>
 
-                            <!-- Accordion / Lista de Frases Ouvidas -->
-                            <div class="accordion accordion-flush" id="accAluno{{ forloop.counter }}">
-                                {% for frase in item.frases %}
-                                    <div class="accordion-item border rounded-3 mb-2">
-                                        <h2 class="accordion-header" id="heading{{ forloop.parentloop.counter }}_{{ forloop.counter }}">
-                                            <button class="accordion-button collapsed p-2 fs-6" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.parentloop.counter }}_{{ forloop.counter }}">
-                                                <div class="d-flex justify-content-between w-100 pe-2 align-items-center">
-                                                    <span class="text-truncate" style="max-width: 180px;">{{ frase.texto_original }}</span>
-                                                    <span class="badge {% if frase.pontuacao >= 70 %}bg-success{% else %}bg-danger{% endif %} ms-1">
-                                                        {{ frase.pontuacao }} pts
-                                                    </span>
-                                                </div>
-                                            </button>
-                                        </h2>
-                                        <div id="collapse{{ forloop.parentloop.counter }}_{{ forloop.counter }}" class="accordion-collapse collapse" data-bs-parent="#accAluno{{ forloop.parentloop.counter }}">
-                                            <div class="accordion-body p-2 fs-7 bg-light">
-                                                <p class="mb-1"><strong>Original:</strong> {{ frase.texto_original }}</p>
-                                                <p class="mb-1"><strong>Digitado:</strong> <span class="text-secondary">{{ frase.texto_digitado }}</span></p>
-                                                
-                                                {% if frase.palavras_erradas %}
-                                                    <div class="mt-2">
-                                                        <small class="fw-bold text-danger d-block">Palavras com Erro:</small>
-                                                        <div class="d-flex flex-wrap gap-1 mt-1">
-                                                            {% for erro in frase.palavras_erradas %}
-                                                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
-                                                                    {{ erro.digitada|default:"___" }} &rarr; {{ erro.original }}
-                                                                </span>
-                                                            {% endfor %}
-                                                        </div>
-                                                    </div>
-                                                {% else %}
-                                                    <span class="badge bg-success-subtle text-success border border-success-subtle mt-1">
-                                                        <i class="bi bi-check-circle me-1"></i> Nenhuma palavra errada
-                                                    </span>
-                                                {% endif %}
-                                            </div>
+                            <div class="list-group list-group-flush scrollable-history-container">
+                                {% for historico in item.historicos %}
+                                    <div class="list-group-item px-0 py-3 border-bottom">
+                                        <div class="d-flex justify-content-between align-items-start mb-1">
+                                            <span class="fw-bold text-dark me-2">Original: {{ historico.texto_original }}</span>
+                                            <span class="badge bg-primary rounded-pill">{{ historico.pontuacao }} pts</span>
                                         </div>
+                                        <div class="text-muted small mb-1">
+                                            <i class="bi bi-chat-quote me-1"></i> Ditado: <em>"{{ historico.texto_digitado }}"</em>
+                                        </div>
+                                        {% if historico.erros_palavra %}
+                                            <div>
+                                                <small class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                                                    Erros: {{ historico.erros_palavra }}
+                                                </small>
+                                            </div>
+                                        {% endif %}
                                     </div>
                                 {% endfor %}
                             </div>
                         </div>
                     </div>
+
                 </div>
+            </div>
             {% empty %}
                 <div class="col-12">
-                    <div class="alert alert-info text-center">Nenhum histórico de ditado registrado.</div>
+                    <div class="alert alert-info rounded-4 text-center p-4">
+                        Nenhum ditado foi realizado até o momento.
+                    </div>
                 </div>
             {% endfor %}
+        </div>
+    </div>
+
+    <!-- Seção: Leitura e Compreensão de Histórias -->
+    <div class="card p-4 shadow-sm rounded-4 mb-4 bg-light overflow-hidden">
+        
+        <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center border-bottom">
+            <div>
+                <h5 class="fw-bold text-dark mb-0 fs-6">
+                    <i class="bi bi-journal-check text-purple me-2" style="color: #6f42c1;"></i>Leitura e Compreensão de Histórias
+                </h5>
+                <small class="text-muted">Acompanhamento dos blocos lidos e respostas enviadas pelos alunos</small>
+            </div>
+            <span class="badge bg-secondary rounded-pill px-3 py-2 fw-semibold">
+                {{ leituras|length }} História(s) em Andamento
+            </span>
+        </div>
+
+        <!-- Corpo do Card -->
+        <div class="card-body p-4">
+            <div class="table-responsive bg-white rounded-3 border">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3" style="width: 25%;">Aluno</th>
+                            <th style="width: 25%;">História</th>
+                            <th class="text-center" style="width: 20%;">Blocos Lidos</th>
+                            <th class="text-center" style="width: 15%;">Última Leitura</th>
+                            <th class="text-end pe-3" style="width: 15%;">Compreensão</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in leituras %}
+                        <tr>
+                            <!-- Aluno -->
+                            <td class="ps-3 fw-bold text-dark">
+                                <i class="bi bi-person-circle text-secondary me-2"></i>{{ item.aluno_nome }}
+                            </td>
+
+                            <!-- História -->
+                            <td class="fw-semibold text-secondary">
+                                <i class="bi bi-book me-1"></i>{{ item.historia_titulo }}
+                            </td>
+
+                            <!-- Indicador de Blocos Lidos -->
+                            <td class="text-center">
+                                <div class="d-flex align-items-center justify-content-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 8px; max-width: 100px;">
+                                        <div class="progress-bar" style="width: {% widthratio item.blocos_lidos item.total_blocos_historia 100 %}%; background-color: #6f42c1;"></div>
+                                    </div>
+                                    <span class="badge bg-purple-subtle text-dark border fw-bold">
+                                        {{ item.blocos_lidos }}/{{ item.total_blocos_historia }}
+                                    </span>
+                                </div>
+                            </td>
+
+                            <!-- Data/Hora da Leitura -->
+                            <td class="text-center text-muted small">
+                                {{ item.ultima_data|date:"d/m/Y H:i" }}
+                            </td>
+
+                            <!-- Ação de Expandir Detalhes da Compreensão -->
+                            <td class="text-end pe-3">
+                                <button class="btn btn-outline-primary btn-sm rounded-pill fw-semibold px-3" type="button" data-bs-toggle="collapse" data-bs-target="#detalhesLeitura{{ forloop.counter }}">
+                                    <i class="bi bi-eye-fill me-1"></i> Ver Respostas
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Linha Expansível contendo as Respostas do Aluno -->
+                        <tr class="p-0 border-0">
+                            <td colspan="5" class="p-0 border-0">
+                                <div class="collapse bg-light p-3 border-bottom" id="detalhesLeitura{{ forloop.counter }}">
+                                    <div class="card card-body border-0 shadow-sm rounded-3">
+                                        <h6 class="fw-bold text-dark mb-3 fs-7">
+                                            <i class="bi bi-chat-left-text me-1 text-primary"></i> Respostas de Compreensão Enviadas por {{ item.aluno_nome }}:
+                                        </h6>
+                                        
+                                        <div class="row g-2">
+                                            {% for resp in item.respostas %}
+                                            <div class="col-md-6">
+                                                <div class="p-3 bg-light rounded-3 border">
+                                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                                        <span class="badge bg-secondary rounded-pill">Bloco {{ resp.ordem_bloco }}</span>
+                                                        <small class="text-muted">
+                                                            <i class="bi {% if resp.tipo_resposta == 'voz' %}bi-mic-fill text-danger{% else %}bi-keyboard-fill text-primary{% endif %} me-1"></i>
+                                                            {{ resp.tempo }}s de resposta
+                                                        </small>
+                                                    </div>
+                                                    <p class="mb-0 text-dark fw-semibold mt-2" style="font-size: 0.9rem;">
+                                                        "{{ resp.resposta_aluno }}"
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted small">
+                                Nenhuma leitura de história registrada até o momento.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <!-- MODAL DIAGNÓSTICO E FICHA DO ALUNO -->
     <div class="modal fade" id="modalFichaAluno" tabindex="-1" aria-labelledby="modalFichaAlunoLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content border-0 shadow-lg">
+            <div class="modal-content border-0 shadow-lg rounded-4">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title fw-bold" id="modalFichaAlunoLabel">
                         <i class="bi bi-file-earmark-bar-graph me-2"></i>Relatório Pedagógico do Aluno
@@ -459,9 +604,9 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <!-- Cabeçalho do Aluno com Foto e Dados -->
+                    <!-- Cabeçalho do Aluno -->
                     <div class="d-flex align-items-center gap-3 p-3 bg-light rounded-3 mb-4 border">
-                        <img id="modalAlunoFoto" src="{% static 'img/avatar_placeholder.png' %}" class="rounded-circle border border-2 border-primary" style="width: 80px; height: 80px; object-fit: cover;">
+                        <img id="modalAlunoFoto" src="{% static 'img/avatar_placeholder.png' %}" class="rounded-circle border border-2 border-primary" style="width: 75px; height: 75px; object-fit: cover;">
                         <div>
                             <h4 id="modalAlunoNome" class="fw-bold mb-1 text-primary">Carregando...</h4>
                             <p class="text-muted mb-0">
@@ -474,131 +619,142 @@
                     <!-- Métricas Principais -->
                     <div class="row g-3 mb-4 text-center">
                         <div class="col-md-4">
-                            <div class="p-3 border rounded-3 bg-white">
-                                <small class="text-muted d-block text-uppercase fw-bold">Velocidade Média</small>
+                            <div class="p-3 border rounded-3 bg-white shadow-sm">
+                                <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.75rem;">Velocidade Média</small>
                                 <span id="modalAlunoPPM" class="fs-4 fw-bold text-primary">0</span> <small class="fw-bold text-primary">PPM</small>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="p-3 border rounded-3 bg-white">
-                                <small class="text-muted d-block text-uppercase fw-bold">Precisão da Leitura</small>
+                            <div class="p-3 border rounded-3 bg-white shadow-sm">
+                                <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.75rem;">Precisão da Leitura</small>
                                 <span id="modalAlunoPrecisao" class="fs-4 fw-bold text-success">0%</span>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <div class="p-3 border rounded-3 bg-white">
-                                <small class="text-muted d-block text-uppercase fw-bold">Maior Pontuação</small>
-                                <span id="modalAlunoRecorde" class="fs-4 fw-bold text-warning">0 pts</span>
+                            <div class="p-3 border rounded-3 bg-white shadow-sm">
+                                <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.75rem;">Maior Pontuação</small>
+                                <span id="modalAlunoMaiorPontuacao" class="fs-4 fw-bold text-warning">0 pts</span>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Gráfico de Desempenho do Aluno -->
-                    <div class="mb-4">
-                        <h6 class="fw-bold text-dark border-bottom pb-2">
-                            <i class="bi bi-graph-up me-2 text-primary"></i>Evolução do Desempenho do Aluno
-                        </h6>
-                        <div style="height: 220px;">
-                            <canvas id="graficoAlunoModal"></canvas>
+                    <!-- Detalhamento de Erros e Atrasos -->
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="card h-100 border-0 bg-light p-3">
+                                <h6 class="fw-bold text-warning mb-2"><i class="bi bi-clock-history me-1"></i> Palavras Demoradas</h6>
+                                <ul id="modalListaDemoras" class="list-group list-group-flush small"></ul>
+                            </div>
                         </div>
-                    </div>
-
-                    <!-- Palavras com Dificuldade (Demoradas, Puladas, Erradas) -->
-                    <div>
-                        <h6 class="fw-bold text-dark border-bottom pb-2">
-                            <i class="bi bi-exclamation-triangle me-2 text-warning"></i>Diagnóstico de Palavras com Dificuldade
-                        </h6>
-                        <div class="row g-2">
-                            <!-- Palavras Demoradas -->
-                            <div class="col-md-4">
-                                <div class="card border-warning h-100">
-                                    <div class="card-header bg-warning bg-opacity-25 text-dark fw-bold small">
-                                        <i class="bi bi-clock-history me-1"></i> Demorou a Ler
-                                    </div>
-                                    <ul id="listaPalavrasDemoradas" class="list-group list-group-flush small">
-                                        <li class="list-group-item text-muted">Nenhum registro</li>
-                                    </ul>
-                                </div>
+                        <div class="col-md-4">
+                            <div class="card h-100 border-0 bg-light p-3">
+                                <h6 class="fw-bold text-secondary mb-2"><i class="bi bi-skip-forward-fill me-1"></i> Palavras Puladas</h6>
+                                <ul id="modalListaPuladas" class="list-group list-group-flush small"></ul>
                             </div>
-                            <!-- Palavras Puladas -->
-                            <div class="col-md-4">
-                                <div class="card border-secondary h-100">
-                                    <div class="card-header bg-secondary bg-opacity-25 text-dark fw-bold small">
-                                        <i class="bi bi-skip-forward me-1"></i> Pulou
-                                    </div>
-                                    <ul id="listaPalavrasPuladas" class="list-group list-group-flush small">
-                                        <li class="list-group-item text-muted">Nenhum registro</li>
-                                    </ul>
-                                </div>
-                            </div>
-                            <!-- Palavras Erradas -->
-                            <div class="col-md-4">
-                                <div class="card border-danger h-100">
-                                    <div class="card-header bg-danger bg-opacity-25 text-danger fw-bold small">
-                                        <i class="bi bi-x-circle me-1"></i> Errou / Pronúncia
-                                    </div>
-                                    <ul id="listaPalavrasErradas" class="list-group list-group-flush small">
-                                        <li class="list-group-item text-muted">Nenhum registro</li>
-                                    </ul>
-                                </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card h-100 border-0 bg-light p-3">
+                                <h6 class="fw-bold text-danger mb-2"><i class="bi bi-x-circle-fill me-1"></i> Palavras Erradas</h6>
+                                <ul id="modalListaErradas" class="list-group list-group-flush small"></ul>
                             </div>
                         </div>
                     </div>
 
-                </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                 </div>
             </div>
         </div>
     </div>
-    {% endblock main%}
-    {% block script %}
-    <!-- Scripts JS -->
+
+    <!-- Scripts Bootstrap e Gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
     <script>
-        let chartAlunoInstance = null;
-        let chartEvolucaoGeral = null;
-        let modalFichaBsInstance = null;
+    let solicitacaoIdPendente = null;
+    let intervalChecagemProf = null;
 
-        // Renderiza o gráfico geral de tendência preditiva dos alunos
-        document.addEventListener("DOMContentLoaded", function() {
-            renderizarGraficoTop10();
-        });
+    function getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+    }
 
-        function renderizarGraficoTop10() {
+    // 1. Checa a cada 3 segundos se algum aluno solicitou mudança de nível
+    function verificarSolicitacoesPendentes() {
+        fetch('/palavra/api/solicitacao/pendente/')
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'tem_solicitacao') {
+                    solicitacaoIdPendente = data.solicitacao_id;
+                    document.getElementById('nomeAlunoSolicitante').innerText = data.aluno_nome;
+                    document.getElementById('nivelSolicitadoAluno').innerText = `Nível ${data.nivel}`;
+                    
+                    // Exibe o modal na tela do professor
+                    document.getElementById('modalSolicitacaoAluno').classList.remove('d-none');
+                } else if (data.status === 'sem_solicitacao') {
+                    // Oculta se não houver pendências
+                    document.getElementById('modalSolicitacaoAluno').classList.add('d-none');
+                }
+            })
+            .catch(err => console.error("Erro ao checar solicitações:", err));
+    }
+
+    // 2. Responde à solicitação (Aprovar / Recusar)
+    function responderSolicitacaoProf(acao) {
+        if (!solicitacaoIdPendente) return;
+
+        fetch(`/palavra/api/solicitacao/responder/${solicitacaoIdPendente}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ 'status': acao })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'sucesso') {
+                document.getElementById('modalSolicitacaoAluno').classList.add('d-none');
+                solicitacaoIdPendente = null;
+            }
+        })
+        .catch(err => console.error("Erro ao responder solicitação:", err));
+    }
+
+    // Inicia a verificação contínua ao carregar o dashboard
+    document.addEventListener("DOMContentLoaded", () => {
+        verificarSolicitacoesPendentes();
+        intervalChecagemProf = setInterval(verificarSolicitacoesPendentes, 3000);
+    });
+</script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            // Inicialização do Gráfico das Três Séries (60s, Ouvir e Falar, e Projeção)
             const ctx = document.getElementById('graficoEvolucao').getContext('2d');
-            
-            // Dados passados pela View Django ou mock para projeção
-            const nomesAlunos = {{ nomes_alunos_json|safe|default:"['Carlos Brito']" }};
-            const pontuacaoAtual = {{ pontos_atuais_json|safe|default:"[114]" }};
-            
-            // Calcula/Projeta crescimento de pronúncia baseado na tendência (projeção +25%)
-            const projecaoEvolucao = pontuacaoAtual.map(p => Math.round(p * 1.25));
 
-            if (chartEvolucaoGeral) chartEvolucaoGeral.destroy();
+            const labelsAlunos = {{ labels_grafico_json|safe }};
+            const dados60s = {{ dados_60s_json|safe }};
+            const dadosOuvirFalar = {{ dados_ouvir_falar_json|safe }};
+            const dadosProjecao = {{ dados_projecao_json|safe }};
 
-            chartEvolucaoGeral = new Chart(ctx, {
+            new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: nomesAlunos,
+                    labels: labelsAlunos,
                     datasets: [
                         {
-                            label: 'Desempenho Atual (Pontos / Pronúncia)',
-                            data: pontuacaoAtual,
-                            backgroundColor: 'rgba(13, 110, 253, 0.85)',
-                            borderColor: 'rgba(13, 110, 253, 1)',
-                            borderWidth: 1,
-                            borderRadius: 6
+                            label: 'Desafio 60s (Pts)',
+                            data: dados60s,
+                            backgroundColor: '#0d6efd',
+                            borderRadius: 6,
                         },
                         {
-                            label: 'Projeção de Evolução de Pronúncia',
-                            data: projecaoEvolucao,
-                            backgroundColor: 'rgba(25, 135, 84, 0.65)',
-                            borderColor: 'rgba(25, 135, 84, 1)',
-                            borderWidth: 1,
-                            borderRadius: 6
+                            label: 'Ouvir e Falar (Pts)',
+                            data: dadosOuvirFalar,
+                            backgroundColor: '#ffc107',
+                            borderRadius: 6,
+                        },
+                        {
+                            label: 'Projeção de Evolução',
+                            data: dadosProjecao,
+                            backgroundColor: '#198754',
+                            borderRadius: 6,
                         }
                     ]
                 },
@@ -606,23 +762,66 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { position: 'top' },
-                        tooltip: { mode: 'index', intersect: false }
+                        legend: {
+                            position: 'bottom',
+                            labels: { font: { weight: 'bold' } }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
                     },
                     scales: {
-                        y: { beginAtZero: true, grid: { color: '#f0f0f0' } },
-                        x: { grid: { display: false } }
+                        x: { grid: { display: false } },
+                        y: { beginAtZero: true }
                     }
                 }
             });
+        });
+
+        // Função para Abrir a Ficha do Aluno via AJAX
+        function abrirFichaAluno(alunoId) {
+            fetch(`/alunos/api/ficha-aluno/${alunoId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.sucesso) {
+                        document.getElementById('modalAlunoNome').innerText = data.nome;
+                        document.getElementById('modalAlunoSerieTurma').innerText = `${data.serie || ''} - ${data.turma || ''}`;
+                        document.getElementById('modalAlunoTotalTestes').innerText = data.total_testes;
+                        document.getElementById('modalAlunoPPM').innerText = data.ppm;
+                        document.getElementById('modalAlunoPrecisao').innerText = `${data.precisao}%`;
+                        document.getElementById('modalAlunoMaiorPontuacao').innerText = `${data.maior_pontuacao} pts`;
+
+                        if (data.foto_url) {
+                            document.getElementById('modalAlunoFoto').src = data.foto_url;
+                        }
+
+                        // Preenche listas
+                        preencherListaModal('modalListaDemoras', data.palavras_demoradas);
+                        preencherListaModal('modalListaPuladas', data.palavras_ignoradas);
+                        preencherListaModal('modalListaErradas', data.palavras_errou);
+
+                        const modal = new bootstrap.Modal(document.getElementById('modalFichaAluno'));
+                        modal.show();
+                    }
+                })
+                .catch(err => console.error("Erro ao carregar ficha do aluno:", err));
         }
 
-        function abrirFichaAluno(alunoId) {
-            const modalElement = document.getElementById('modalFichaAluno');
-            if (!modalFichaBsInstance) {
-                modalFichaBsInstance = new bootstrap.Modal(modalElement);
+        function preencherListaModal(elementId, lista) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = '';
+            if (lista && lista.length > 0) {
+                lista.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item bg-transparent border-0 px-0 py-1';
+                    li.innerText = `• ${item}`;
+                    el.appendChild(li);
+                });
+            } else {
+                el.innerHTML = '<li class="list-group-item bg-transparent border-0 px-0 py-1 text-muted">Nenhum registro</li>';
             }
-            modalFichaBsInstance.show();
         }
     </script>
-    {% endblock script %}
+</body>
+</html>

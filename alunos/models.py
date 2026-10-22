@@ -3,37 +3,38 @@ from django.core.files import File
 from django.db import models
 from django.db.models import Avg, Max
 import qrcode
+from django.contrib.auth.models import User
+
+from autentica.models import Escola
 
 NIVEIS_ENSINO = [
     ('EF1', 'Ensino Fundamental I'),
     ('EF2', 'Ensino Fundamental II'),
     ('EM', 'Ensino Médio'),
 ]
-
-
 class Aluno(models.Model):
-  nome_completo = models.CharField(max_length=150)
+  nome_completo = models.CharField(max_length=255)
   turma = models.CharField(max_length=50)
-  serie = models.CharField(max_length=50, blank=True, null=True)
-  foto = models.ImageField(upload_to='fotos_alunos/', blank=True, null=True)
-  qr_code = models.ImageField(upload_to='qrcodes/', blank=True, null=True)
+  serie = models.CharField(max_length=50)
+  foto = models.ImageField(upload_to='fotos_alunos/', null=True, blank=True)
+  qr_code = models.ImageField(
+      upload_to='qr_codes_alunos/', null=True, blank=True
+  )
 
-  def save(self, *args, **kwargs):
-    super().save(*args, **kwargs)
-
-    if not self.qr_code:
-      dados_qr = f"Aluno: {self.nome_completo}\nSérie: {self.serie or ''}\nTurma: {self.turma}"
-      qr_img = qrcode.make(dados_qr)
-      buffer = BytesIO()
-      qr_img.save(buffer, format='PNG')
-
-      filename = f"qr_aluno_{self.id}.png"
-      self.qr_code.save(filename, File(buffer), save=False)
-      super().save(*args, **kwargs)
+  # Chaves Estrangeiras
+  escola = models.ForeignKey(
+      'autentica.Escola', on_delete=models.CASCADE, related_name='alunos'
+  )
+  professor = models.ForeignKey(
+      User,
+      on_delete=models.CASCADE,
+      related_name='alunos_cadastrados',
+      null=True,
+      blank=True,
+  )
 
   def __str__(self):
-    return f"{self.nome_completo} - {self.turma}"
-
+    return self.nome_completo
 
 class ResultadoLeitura(models.Model):
   aluno = models.ForeignKey(

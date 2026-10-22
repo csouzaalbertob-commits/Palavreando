@@ -18,24 +18,10 @@ class PalavraForm(forms.ModelForm):
 
 #para o Ditado
 class FraseForm(forms.ModelForm):
-
-  class Meta:
-    model = Frase
-    fields = ['nivel', 'texto']
-    widgets = {
-        'nivel': forms.Select(attrs={'class': 'form-select form-select-lg'}),
-        'texto': forms.Textarea(
-            attrs={
-                'class': 'form-control',
-                'rows': 4,
-                'placeholder': (
-                    'Digite aqui a frase ou parágrafo completo para o'
-                    ' ditado...'
-                ),
-            }
-        ),
-    }
-    labels = {
-        'nivel': 'Nível de Dificuldade',
-        'texto': 'Frase / Parágrafo do Ditado',
-    }
+    class Meta:
+        model = Frase
+        fields = ['texto', 'nivel']
+        widgets = {
+            'texto': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Digite a frase...'}),
+            'nivel': forms.Select(choices=[(1, 'Nível 1 - Fácil'), (2, 'Nível 2 - Médio'), (3, 'Nível 3 - Difícil')], attrs={'class': 'form-select'}),
+        }
