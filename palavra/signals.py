@@ -1,4 +1,4 @@
-import fitz  # PyMuPDF
+import pymupdf as fitz
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.files.base import ContentFile

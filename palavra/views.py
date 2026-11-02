@@ -21,16 +21,62 @@ from django.utils import timezone
 from alunos.models import Aluno, ResultadoLeitura
 from .forms import PalavraForm, FraseForm
 from .models import BlocoHistoria, Historia, Palavra, PartidaBatalha, RespostaCompreensao, SolicitacaoNivel, Frase, HistoricoDitado
-from palavra.models import ResultadoOuvirEFalar
+from palavra.models import ResultadoOuvirEFalar, PartidaBatalha, HistoricoDitado, RespostaCompreensao
+from alunos.models import Aluno
 
 app_name = 'palavra'
-
 
 @login_required
 # 1. Tela para o aluno se identificar antes de iniciar
 def selecionar_aluno(request):
-    alunos = Aluno.objects.all().order_by('nome_completo')
+    alunos = Aluno.objects.filter(professor=request.user).order_by('nome_completo')
     return render(request, 'palavra/selecionar_aluno.html', {'alunos': alunos})
+
+@login_required
+def ficha_aluno(request):
+    # 1. Filtra os alunos associados ao professor logado
+    alunos = Aluno.objects.filter(professor=request.user).order_by('nome_completo')
+    
+    aluno_selecionado = None
+    desempenho = {}
+
+    aluno_id = request.GET.get('aluno_id')
+    
+    if aluno_id and aluno_id.isdigit():
+        # Busca o aluno garantindo o isolamento por professor
+        aluno_selecionado = get_object_or_404(Aluno, id=int(aluno_id), professor=request.user)
+
+        # 2. Desempenho no Módulo 60s / Avaliações de Leitura
+        leituras_60s = ResultadoLeitura.objects.filter(aluno=aluno_selecionado).order_by('-data_realizacao')
+
+        # 3. Desempenho no Modo Batalha (Buscando partidas onde o aluno foi J1 ou J2)
+        partidas_j1 = PartidaBatalha.objects.filter(jogador_1=aluno_selecionado)
+        partidas_j2 = PartidaBatalha.objects.filter(jogador_2=aluno_selecionado)
+        partidas_batalha = (partidas_j1 | partidas_j2).distinct().order_by('-criado_em')
+
+        # 4. Desempenho no Módulo Ouvir e Falar
+        ouvir_falar = ResultadoOuvirEFalar.objects.filter(aluno=aluno_selecionado).order_by('-data_realizacao')
+
+        # 5. Desempenho no Ditado
+        ditados = HistoricoDitado.objects.filter(aluno=aluno_selecionado).select_related('frase').order_by('-data_registro')
+
+        # 6. Desempenho em História e Imaginação
+        respostas_historia = RespostaCompreensao.objects.filter(aluno=aluno_selecionado).select_related('bloco__historia').order_by('-data_realizacao')
+
+        desempenho = {
+            'leituras_60s': leituras_60s,
+            'partidas_batalha': partidas_batalha,
+            'ouvir_falar': ouvir_falar,
+            'ditados': ditados,
+            'respostas_historia': respostas_historia,
+        }
+
+    context = {
+        'alunos': alunos,
+        'aluno': aluno_selecionado,
+        'desempenho': desempenho,
+    }
+    return render(request, 'palavra/fichaluno.html', context)
 
 @login_required
 # 2. Tela da atividade

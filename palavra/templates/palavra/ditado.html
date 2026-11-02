@@ -4,6 +4,15 @@
 {% block title %}Ditado — Palavreando{% endblock title %} 
 
 {% block main %}
+ <header class="bg-primary text-white py-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <h1 class="h3 mb-0">Leitura Interativa por Voz</h1>
+            <a href="{% url 'autentica:dashboard' %}" class="btn btn-light text-primary">
+                <i class="bi bi-house-door-fill"></i> Voltar para Home
+            </a>
+        </div>
+    </header>
+    
 <div class="container" style="max-width: 700px;">
     <!-- Cabeçalho com Infos do Aluno -->
     <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-3 rounded-4 shadow-sm">

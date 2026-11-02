@@ -20,3 +20,6 @@ application = ProtocolTypeRouter({
         )
     ),
 })
+
+# Configuração do aplicativo padrão para o Django
+default_app_config = 'palavra.apps.PalavraConfig'

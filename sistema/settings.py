@@ -179,3 +179,16 @@ DEFAULT_FROM_EMAIL = "prof.carlospopo@gmail.com"
 # Configuração da versão do aplicativo
 APP_VERSION = '2.0.0'
 
+#===Proteção contra ataques e vulnerabilidades===
+# Impede que o site seja aberto dentro de um iframe em outros domínios (Anti-Clickjacking)
+X_FRAME_OPTIONS = 'DENY'
+
+# Impede que navegadores tentem adivinhar o Content-Type (MIME Sniffing)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Ativa o filtro XSS integrado do navegador
+SECURE_BROWSER_XSS_FILTER = True
+
+# Garante que os cookies de sessão e CSRF trafeguem apenas por HTTPS seguro
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG

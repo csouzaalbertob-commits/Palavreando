@@ -1,0 +1,320 @@
+{% extends "base/basepg.html" %}
+{% load static %}
+
+{% block title %}Ficha do Aluno — Palavreando{% endblock title %}
+
+{% block main %}
+<!-- Cabeçalho Superior -->
+<header class="bg-primary text-white py-3 shadow-sm mb-4">
+    <div class="container d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+                <img src="{% static 'img/logo.png' %}" alt="Logo" width="180" height="auto" class="d-inline-block align-text-top me-2" style="object-fit: contain;">
+            </a>
+            <h2 class="h4 mb-0 fw-bold fonte-garrafal text-white">Desempenho do Aluno</h2>
+        </div>
+        <a href="{% url 'autentica:dashboard' %}" class="btn btn-light text-primary fw-bold rounded-pill">
+            <i class="bi bi-arrow-left-circle-fill me-1"></i> Voltar ao Dashboard
+        </a>
+    </div>
+</header>
+
+<div class="container pb-5">
+    <!-- Formulário de Seleção do Aluno -->
+    <div class="card shadow-sm border-0 rounded-4 mb-4 bg-white">
+        <div class="card-body p-4">
+            <form method="GET" action="{% url 'palavra:ficha_aluno' %}" class="row g-3 align-items-end">
+                <div class="col-md-9">
+                    <label for="aluno_id" class="form-label fw-bold text-dark">
+                        <i class="bi bi-person-bounding-box text-primary me-1"></i> Selecione o Aluno:
+                    </label>
+                    <select name="aluno_id" id="aluno_id" class="form-select form-select-lg rounded-3" required>
+                        <option value="" disabled {% if not aluno %}selected{% endif %}>Escolha um aluno da sua turma...</option>
+                        {% for a in alunos %}
+                            <option value="{{ a.id }}" {% if aluno and aluno.id == a.id %}selected{% endif %}>
+                                {{ a.nome_completo }} — Turma: {{ a.turma }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold rounded-pill shadow-sm">
+                        <i class="bi bi-search me-1"></i> Mostrar Aluno
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if aluno %}
+    <!-- Cartão Perfil do Aluno -->
+    <div class="card shadow-sm border-0 rounded-4 mb-4 bg-white overflow-hidden">
+        <div class="card-body p-4">
+            <div class="d-flex flex-column flex-md-row align-items-center gap-4">
+                <!-- Foto do Aluno -->
+                <div class="flex-shrink-0 text-center">
+                    {% if aluno.foto %}
+                        <img src="{{ aluno.foto.url }}" alt="{{ aluno.nome_completo }}" class="rounded-circle border border-3 border-primary shadow-sm" style="width: 120px; height: 120px; object-fit: cover;">
+                    {% else %}
+                        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center shadow-sm fw-bold fs-2" style="width: 120px; height: 120px;">
+                            {{ aluno.nome_completo|slice:":2"|upper }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Informações do Aluno -->
+                <div class="flex-grow-1 text-center text-md-start">
+                    <h3 class="fw-bold text-dark mb-2">{{ aluno.nome_completo }}</h3>
+                    <div class="d-flex flex-wrap justify-content-center justify-content-md-start gap-2">
+                        <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-3 py-2 rounded-pill fs-7">
+                            <i class="bi bi-mortarboard-fill me-1"></i> <strong>Série/Ano:</strong> {{ aluno.serie|default:"Não informado" }}
+                        </span>
+                        <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-3 py-2 rounded-pill fs-7">
+                            <i class="bi bi-people-fill me-1"></i> <strong>Turma:</strong> {{ aluno.turma }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Abas de Desempenho por Módulo -->
+    <div class="card shadow-sm border-0 rounded-4 bg-white overflow-hidden">
+        <div class="card-header bg-light border-bottom p-3">
+            <ul class="nav nav-pills nav-fill gap-2" id="pills-tab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active fw-bold rounded-pill" id="pills-60s-tab" data-bs-toggle="pill" data-bs-target="#pills-60s" type="button" role="tab">
+                        <i class="bi bi-clock-history me-1"></i> 60 Segundos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-bold rounded-pill" id="pills-batalha-tab" data-bs-toggle="pill" data-bs-target="#pills-batalha" type="button" role="tab">
+                        <i class="bi bi-swords me-1"></i> Modo Batalha
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-bold rounded-pill" id="pills-ouvir-tab" data-bs-toggle="pill" data-bs-target="#pills-ouvir" type="button" role="tab">
+                        <i class="bi bi-headphones me-1"></i> Ouvir e Falar
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-bold rounded-pill" id="pills-ditado-tab" data-bs-toggle="pill" data-bs-target="#pills-ditado" type="button" role="tab">
+                        <i class="bi bi-pencil-square me-1"></i> Ditado
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-bold rounded-pill" id="pills-historia-tab" data-bs-toggle="pill" data-bs-target="#pills-historia" type="button" role="tab">
+                        <i class="bi bi-journal-bookmark-fill me-1"></i> História e Imaginação
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card-body p-4">
+            <div class="tab-content" id="pills-tabContent">
+                
+                <!-- 1. MÓDULO 60s -->
+                <div class="tab-pane fade show active" id="pills-60s" role="tabpanel">
+                    <h5 class="fw-bold text-dark mb-3"><i class="bi bi-trophy-fill text-warning me-2"></i>Histórico do Desafio 60s</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data</th>
+                                    <th class="text-center">Etapa / Detalhes</th>
+                                    <th class="text-center">Palavras Lidas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for j in desempenho.leituras_60s %}
+                                <tr>
+                                    <td>{{ j.criado_em|date:"d/m/Y H:i"|default:j.data_realizacao|date:"d/m/Y H:i" }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary px-3 py-2 fw-bold">
+                                            Etapa {{ j.etapa|default:"1" }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center fw-bold text-success">
+                                        {{ j.respostas_palavras.count }} palavra(s)
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="text-center text-muted py-3">Nenhum teste de 60s realizado.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 2. MODO BATALHA -->
+                <div class="tab-pane fade" id="pills-batalha" role="tabpanel">
+                    <h5 class="fw-bold text-dark mb-3"><i class="bi bi-controller text-primary me-2"></i>Histórico do Modo Batalha</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Adversário</th>
+                                    <th class="text-center">Pontos</th>
+                                    <th class="text-center">Resultado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for b in desempenho.partidas_batalha %}
+                                <tr>
+                                    <td>{{ b.criado_em|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        {% if b.jogador_1 == aluno %}
+                                            {{ b.jogador_2.nome_completo|default:"Sem oponente" }}
+                                        {% else %}
+                                            {{ b.jogador_1.nome_completo }}
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center fw-bold">
+                                        {% if b.jogador_1 == aluno %}
+                                            {{ b.pontos_j1|default:0 }}
+                                        {% else %}
+                                            {{ b.pontos_j2|default:0 }}
+                                        {% endif %} pts
+                                    </td>
+                                    <td class="text-center">
+                                        {% if b.vencedor == aluno %}
+                                            <span class="badge bg-success px-3 py-2">Vitória</span>
+                                        {% elif b.vencedor %}
+                                            <span class="badge bg-danger px-3 py-2">Derrota</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary px-3 py-2">Empate/Em andamento</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4" class="text-center text-muted py-3">Nenhuma batalha realizada.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 3. OUVIR E FALAR -->
+                <div class="tab-pane fade" id="pills-ouvir" role="tabpanel">
+                    <h5 class="fw-bold text-dark mb-3"><i class="bi bi-mic-fill text-danger me-2"></i>Avaliador de Pronúncia (Ouvir e Falar)</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data</th>
+                                    <th class="text-center">Pontuação Total</th>
+                                    <th class="text-center">Acertos</th>
+                                    <th class="text-center">Tempo (s)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for o in desempenho.ouvir_falar %}
+                                <tr>
+                                    <td>{{ o.data_realizacao|date:"d/m/Y H:i" }}</td>
+                                    <td class="text-center"><span class="badge bg-success px-3 py-2 fw-bold">{{ o.pontuacao_total }} pts</span></td>
+                                    <td class="text-center fw-bold text-primary">{{ o.palavras_acertadas }} palavras</td>
+                                    <td class="text-center text-muted">{{ o.tempo_segundos }}s</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4" class="text-center text-muted py-3">Nenhum registro no modo Ouvir e Falar.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 4. DITADO -->
+                <div class="tab-pane fade" id="pills-ditado" role="tabpanel">
+                    <h5 class="fw-bold text-dark mb-3"><i class="bi bi-pencil-square text-info me-2"></i>Histórico do Ditado Eletrônico</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Frase Original</th>
+                                    <th>Texto Digitado</th>
+                                    <th class="text-center">Pontuação</th>
+                                </tr>
+                            </thead>
+                                <tbody>
+                                    {% for d in desempenho.ditados %}
+                                    <tr>
+                                        <!-- Data do registro -->
+                                        <td>{{ d.data_registro|date:"d/m/Y H:i" }}</td>
+                                        
+                                        <!-- Frase Original -->
+                                        <td class="fw-bold text-dark">{{ d.texto_original }}</td>
+                                        
+                                        <!-- Texto digitado pelo aluno e detalhamento dos erros -->
+                                        <td>
+                                            <div class="fst-italic text-muted mb-1">"{{ d.texto_digitado }}"</div>
+                                            {% if d.erros_palavra %}
+                                                <small class="badge bg-danger-subtle text-danger border border-danger-subtle fw-normal">
+                                                    <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ d.erros_palavra }}
+                                                </small>
+                                            {% endif %}
+                                        </td>
+                                        
+                                        <!-- Pontuação -->
+                                        <td class="text-center">
+                                            <span class="badge {% if d.pontuacao >= 70 %}bg-success{% elif d.pontuacao >= 50 %}bg-warning text-dark{% else %}bg-danger{% endif %} px-3 py-2 fw-bold">
+                                                {{ d.pontuacao }} pts
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-3">
+                                            Nenhum ditado realizado.
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 5. HISTÓRIA E IMAGINAÇÃO -->
+                <div class="tab-pane fade" id="pills-historia" role="tabpanel">
+                    <h5 class="fw-bold text-dark mb-3"><i class="bi bi-book-half text-purple me-2" style="color: #6f42c1;"></i>Leitura e Compreensão de Histórias</h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>História</th>
+                                    <th class="text-center">Bloco</th>
+                                    <th>Resposta do Aluno</th>
+                                    <th class="text-center">Tipo</th>
+                                    <th class="text-center">Data</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for h in desempenho.respostas_historia %}
+                                <tr>
+                                    <td class="fw-bold text-dark">{{ h.bloco.historia.titulo }}</td>
+                                    <td class="text-center"><span class="badge bg-secondary rounded-pill">Bloco {{ h.bloco.ordem_bloco }}</span></td>
+                                    <td class="fst-italic">"{{ h.resposta_aluno }}"</td>
+                                    <td class="text-center">
+                                        {% if h.tipo_resposta == 'voz' %}
+                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="bi bi-mic-fill me-1"></i>Voz</span>
+                                        {% else %}
+                                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle"><i class="bi bi-keyboard-fill me-1"></i>Texto</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center text-muted small">{{ h.data_realizacao|date:"d/m/Y H:i" }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="5" class="text-center text-muted py-3">Nenhuma resposta registrada no módulo de Histórias.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock main %}
