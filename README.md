@@ -8,11 +8,87 @@ O **Palavreando** é uma aplicação web desenvolvida em Django focada no gerenc
 ---
 
 ## 🛠️ Tecnologias Utilizadas
+Desenvolvido por: Carlos Brito e Alessandra Jastes.
+Versão: v2.0.0.
+Copyright: © 2026 Sistema de Leitura Interativa por Voz.
+Construido com:
+Python 3.14.4
+Django 6.1.1
+Sub-Bibliotecas:
+APScheduler==3.11.3
+asgiref==3.12.1
+attrs==26.1.0
+autobahn==26.7.1
+Automat==25.4.16
+beautifulsoup4==4.15.0
+cbor2==6.1.4
+certifi==2026.7.22
+cffi==2.1.1
+channels==4.3.2
+charset-normalizer==3.5.1
+constantly==23.10.4
+cryptography==50.0.2
+daphne==4.2.3
+Django==6.1.1
+dnspython==2.8.0
+email-validator==2.3.0
+et_xmlfile==2.0.0
+flatbuffers==25.12.19
+google-api-core==2.42.0
+google-api-python-client==2.201.0
+google-auth==2.61.0
+google-auth-httplib2==0.4.4
+googleapis-common-protos==1.75.5
+httplib2==0.32.0
+hyperlink==21.0.0
+idna==3.19
+Incremental==24.11.0
+lxml==6.1.3
+msgpack==1.2.2
+networkx==3.7
+numpy==2.5.3
+onnxruntime==1.31.0
+openpyxl==3.1.5
+opentelemetry-api==1.45.1
+packaging==26.3
+pandas==3.0.6
+pillow==12.3.0
+proto-plus==1.29.0
+protobuf==7.36.2
+psutil==7.2.2
+psycopg==3.3.6
+psycopg-binary==3.3.6
+psycopg2-binary==2.9.13
+pyasn1==0.6.4
+pyasn1_modules==0.4.2
+pycparser==3.0
+pymupdf==2.0
+pymupdf4llm==2.0
+pymupdf_layout==2.0
+pyOpenSSL==26.4.0
+pyparsing==3.3.3
+pypdf==6.21.1
+python-dateutil==2.9.0.post0
+python-dotenv==1.2.3
+PyYAML==6.0.3
+qrcode==8.2
+requests==2.34.2
+rsa==4.9.1
+service-identity==26.1.0
+six==1.17.0
+soupsieve==2.9.2
+sqlparse==0.6.0
+tabulate==0.10.0
+Twisted==26.4.0
+txaio==26.6.1
+typing_extensions==4.16.0
+tzlocal==5.4.4
+ujson==6.0.0
+uritemplate==4.2.0
+urllib3==2.8.0
+zope.interface==8.6
+Bootstrap 5.3.0
 
-- **Linguagem:** Python 3.12+
-- **Framework Web:** Django 5.x
-- **Banco de Dados:** PostgreSQL
-- **Ambiente Operacional Recomendado:** Ubuntu 22.04 / 24.04 / 26.04 LTS
 
 ---
 
