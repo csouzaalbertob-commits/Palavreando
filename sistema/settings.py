@@ -18,7 +18,8 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'sua-chave-padrao-caso-nao-ache-.env')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
+
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 
 CSRF_TRUSTED_ORIGINS = [
     'https://192.168.100.11',
@@ -145,7 +146,7 @@ USE_TZ = False
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 # CONFIGURAÇÕES DE ARQUIVOS ESTÁTICOS (WhiteNoise)
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
