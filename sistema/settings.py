@@ -1,29 +1,33 @@
+import os
 from pathlib import Path
 from dotenv import load_dotenv
-import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv()
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
+# Carrega as variáveis do ficheiro .env
+load_dotenv(BASE_DIR / '.env')
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'sua-chave-padrao-caso-nao-ache-.env')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-chave-temporaria-dev-trocar-em-producao')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 't')
 
+# Configuração flexível de Hosts Permitidos
+allowed_hosts_env = os.environ.get('ALLOWED_HOSTS', '')
+if allowed_hosts_env:
+    ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
+else:
+    ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'aprendi.arvity.com.br']
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
-
+# Origens confiáveis para proteção CSRF em HTTPS
 CSRF_TRUSTED_ORIGINS = [
+    'https://aprendi.arvity.com.br',
+    'http://aprendi.arvity.com.br',
     'https://192.168.100.11',
     'http://192.168.100.11',
+    'http://127.0.0.1:8000',
 ]
 
 # Application definition
@@ -38,9 +42,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.humanize',
     # 3rd party
-    #'django_extensions',
     'channels',
-    #meus apps
+    # Meus Apps
     'alunos',
     'autentica',
     'base',
@@ -55,7 +58,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # middleware de carregamento autentica
+    # Middleware customizado
     'autentica.middleware.AutoPopulateMiddleware',
 ]
 
@@ -64,14 +67,14 @@ ROOT_URLCONF = 'sistema.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'sistema.context_processors.global_version',  # <--- Altere 'sistema' para 'base'
+                'sistema.context_processors.global_version', # Garanta que a função global_version existe em sistema/context_processors.py
             ],
         },
     },
@@ -80,116 +83,87 @@ TEMPLATES = [
 WSGI_APPLICATION = 'sistema.wsgi.application'
 ASGI_APPLICATION = 'sistema.asgi.application'
 
-# Para desenvolvimento em memória (sem Redis)
+# Layers para WebSockets (Channels)
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels.layers.InMemoryChannelLayer"
     },
 }
 
-# Database
-# https://docs.djangoproject.com/en/6.1/ref/settings/#databases
+# Database (PostgreSQL com variáveis de ambiente)
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('DB_NAME', 'palavra_db'),
+        'USER': os.environ.get('DB_USER', 'palavra_user'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'CISEBAM@26%A%C%'),
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
+        'CONN_MAX_AGE': 600,
     }
 }
-#DATABASES = {
- #   'default': {
-#        'ENGINE': 'django.db.backends.postgresql',
-#        'NAME': os.environ.get('DB_NAME', 'palavra_db'),
-#        'USER': os.environ.get('DB_USER', 'palavra_user'),
-#        'PASSWORD': os.environ.get('DB_PASSWORD', 'CISEBAM@26%A%C%'),
-#        'HOST': os.environ.get('DB_HOST', 'localhost'),
- #       'PORT': os.environ.get('DB_PORT', '5432'),
- #       'CONN_MAX_AGE': 600,
-#    }
-#}
-
 
 # Password validation
-# https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 AUTHENTICATION_BACKENDS = [
     'autentica.backends.EmailOrUsernameModelBackend', 
     'django.contrib.auth.backends.ModelBackend',     
 ]
+
 # Internationalization
-# https://docs.djangoproject.com/en/6.1/topics/i18n/
-
 LANGUAGE_CODE = 'pt-br'
-
 TIME_ZONE = 'America/Belem'
-
 USE_I18N = True
+USE_TZ = True
 
-USE_TZ = False
-
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.1/howto/static-files/
-
-# CONFIGURAÇÕES DE ARQUIVOS ESTÁTICOS (WhiteNoise)
+# Archivos Estáticos e Media
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
+    BASE_DIR / 'static',
 ]
-# Arquivos de Media
+
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-LOGIN_REDIRECT_URL = 'autentica:dashboard'  # Redireciona para a página de dashboard após login
+MEDIA_ROOT = BASE_DIR / 'media'
+
+LOGIN_REDIRECT_URL = 'autentica:dashboard'
 LOGOUT_REDIRECT_URL = 'autentica:login'
 LOGIN_URL = 'autentica:login'
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
-
-# CONFIGURAÇÃO UNIFICADA DE E-MAIL (Django 6.x)
+# E-mail (Leitura via .env recomendada)
 MAILERS = {
     "default": {
         "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
         "OPTIONS": {
-            "host": "smtp.gmail.com",
-            "port": 587,
+            "host": os.environ.get("EMAIL_HOST", "smtp.gmail.com"),
+            "port": int(os.environ.get("EMAIL_PORT", 587)),
             "use_tls": True,
-            "username": "prof.carlospopo@gmail.com",
-            "password": "flgw fypg pptk sfnq",  # Dica: Para Gmail/Google Workspace, use uma 'Senha de App' de 16 dígitos
+            "username": os.environ.get("EMAIL_HOST_USER", "prof.carlospopo@gmail.com"),
+            "password": os.environ.get("EMAIL_HOST_PASSWORD", "flgw fypg pptk sfnq"),
         },
     }
 }
 
-DEFAULT_FROM_EMAIL = "prof.carlospopo@gmail.com"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "prof.carlospopo@gmail.com")
 
-# Configuração da versão do aplicativo
 APP_VERSION = '2.0.0'
 
-#===Proteção contra ataques e vulnerabilidades===
-# Impede que o site seja aberto dentro de um iframe em outros domínios (Anti-Clickjacking)
+# === Proteção e Segurança de Produção ===
 X_FRAME_OPTIONS = 'DENY'
-
-# Impede que navegadores tentem adivinhar o Content-Type (MIME Sniffing)
 SECURE_CONTENT_TYPE_NOSNIFF = True
-
-# Ativa o filtro XSS integrado do navegador
 SECURE_BROWSER_XSS_FILTER = True
 
-# Garante que os cookies de sessão e CSRF trafeguem apenas por HTTPS seguro
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
