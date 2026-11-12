@@ -99,7 +99,8 @@ DATABASES = {
         'PASSWORD': os.environ.get('DB_PASSWORD', 'CISEBAM@26%A%C%'),
         'HOST': os.environ.get('DB_HOST', 'localhost'),
         'PORT': os.environ.get('DB_PORT', '5432'),
-        'CONN_MAX_AGE': 600,
+        'CONN_MAX_AGE': 0,  # Evita o esgotamento de conexões no Daphne/ASGI
+        'CONN_HEALTH_CHECKS': True,
     }
 }
 
