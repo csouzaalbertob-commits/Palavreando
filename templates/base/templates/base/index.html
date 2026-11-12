@@ -1,0 +1,102 @@
+{% extends "base/base.html" %}
+{% load static %}
+    {% block main %}
+    <div class="container-fluid px-4 px-lg-5">
+        <!-- 1. Área Superior (Maior) - Logo e Nome -->
+        <div class="hero-banner text-white text-center p-5 mb-4 shadow">
+            <div class="d-flex justify-content-center align-items-center">
+                <img src="{% static 'img/logo.png' %}" alt="Logo" width="480" height="auto" class="img-fluid" style="object-fit: contain;">
+            </div>
+            <p class="fs-5 text-white-50 mb-0">Plataforma Interativa de Avaliação e Estudo de Leitura</p>
+
+            <div class="app-version">
+                v{{ APP_VERSION }}
+            </div>
+        </div>
+
+        <!-- Áreas Inferiores (4 Colunas) -->
+        <div class="row g-4">
+            
+            <!-- 2. Área Perfil -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card h-100 shadow-sm action-card bg-white">
+                    <div class="card-body text-center p-4 d-flex flex-column justify-content-between">
+                        <div>
+                            <div class="card-icon text-primary mb-3">
+                                <i class="bi bi-person-circle"></i>
+                            </div>
+                            <h3 class="fw-bold text-dark mb-2">Perfil</h3>
+                            <p class="text-muted small">Gerencie suas informações pessoais, dados de contato e preferências do professor.</p>
+                        </div>
+                        <div class="mt-4">
+                            <a href="{% url 'autentica:editar_perfil' %}" class="btn btn-outline-primary btn-lg w-100 fw-bold rounded-pill fs-6">
+                                Editar Perfil
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Área Controle -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card h-100 shadow-sm action-card bg-white">
+                    <div class="card-body text-center p-4 d-flex flex-column justify-content-between">
+                        <div>
+                            <div class="card-icon text-success mb-3">
+                                <i class="bi bi-sliders"></i>
+                            </div>
+                            <h3 class="fw-bold text-dark mb-2">Controle</h3>
+                            <p class="text-muted small">Cadastre alunos, gerencie o banco de palavras e acompanhe relatórios.</p>
+                        </div>
+                        <div class="mt-4">
+                            <a href="{% url 'autentica:dashboard' %}" class="btn btn-outline-success btn-lg w-100 fw-bold rounded-pill fs-6">
+                                Painel de Controle
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Área Estudo / Avaliação -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card h-100 shadow-sm action-card bg-white">
+                    <div class="card-body text-center p-4 d-flex flex-column justify-content-between">
+                        <div>
+                            <div class="card-icon text-warning mb-3">
+                                <i class="bi bi-play-circle-fill"></i>
+                            </div>
+                            <h3 class="fw-bold text-dark mb-2">Estudo / Avaliação</h3>
+                            <p class="text-muted small">Inicie a sessão de leitura por voz com cronômetro de 60s e pontuação em tempo real.</p>
+                        </div>
+                        <div class="mt-4">
+                            <a href="{% url 'palavra:selecionar_aluno' %}" class="btn btn-outline-warning btn-lg w-100 fw-bold rounded-pill fs-6">
+                                Iniciar Atividade
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Sobre -->
+            <div class="col-lg-3 col-md-6">
+                <div class="card h-100 shadow-sm action-card bg-white">
+                    <div class="card-body text-center p-4 d-flex flex-column justify-content-between">
+                        <div>
+                            <div class="card-icon text-info mb-3">
+                                <i class="bi bi-info-circle-fill"></i>
+                            </div>
+                            <h3 class="fw-bold text-dark mb-2">Sobre</h3>
+                            <p class="text-muted small">Saiba mais sobre o projeto Palavreando e a equipe de desenvolvedores.</p>
+                        </div>
+                        <div class="mt-4">
+                            <a href="{% url 'base:sobre' %}" class="btn btn-outline-info btn-lg w-100 fw-bold rounded-pill fs-6">
+                                Conhecer Mais
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+{% endblock main %}

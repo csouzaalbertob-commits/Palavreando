@@ -1,0 +1,171 @@
+{% extends 'base/basepg.html' %}
+{% load static %}
+{% block title %}
+    Sobre o Projeto
+{% endblock title %}
+
+{% block style %}
+    <style>
+        /* Estilização dos Containers de Foto Redonda com Borda Azul e Ícone Flutuante */
+        .avatar-container {
+            position: relative;
+            display: inline-block;
+            width: 200px;
+            height: 200px;
+            top: -70px;
+        }
+
+        .avatar-img {
+            width: 200px;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 50%;
+            border: 4px solid #0d6efd; /* Borda Azul do Bootstrap (Primary) */
+            box-shadow: 0 4px 10px rgba(13, 110, 253, 0.2);
+        }
+
+        .avatar-badge {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ffffff;
+            font-size: 1.1rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        }
+
+        .hover-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .hover-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+        }
+    </style>
+    {% endblock style %}
+
+{% block main %}
+    <!-- Navegação -->
+    <header class="bg-primary text-white py-3 shadow-sm mb-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+                        <img src="{% static 'img/logo.png' %}" alt="Logo" width="200" height="auto" class="d-inline-block align-text-top me-2" style="object-fit: contain;">
+                    </a>
+                <h2 class="h4 mb-0 fw-bold fonte-garrafal text-white">Sobre</h2>
+            </div>
+            <a href="{% url 'autentica:dashboard' %}" class="btn btn-light text-primary fw-bold rounded-pill">
+                <i class="bi bi-arrow-left-circle-fill me-1"></i> Voltar ao Dashboard
+            </a>
+        </div>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="container my-auto py-3">
+        
+        <!-- Cabeçalho da Página -->
+        <div class="text-center mb-5">
+            <h2 class="fw-bold text-primary">Conheça o Nosso Projeto</h2>
+            <p class="text-muted fs-5">Tecnologia, Inovação e Educação a serviço da leitura e do desenvolvimento.</p>
+            <div class="mx-auto bg-primary rounded" style="width: 60px; height: 4px;"></div>
+        </div>
+
+        <div class="row g-4 justify-content-center">
+            
+            <!-- Card 1: Carlos Brito -->
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm hover-card">
+                    <div class="card-body text-center p-4">
+                        
+                        <!-- Avatar com Foto + Borda Azul + Ícone -->
+                        <div class="avatar-container mb-3">                            
+                            <img src="{% static 'img/carlos.jpeg' %}" alt="Carlos Brito" class="avatar-img">
+                            <div class="avatar-badge bg-success text-white">
+                                <i class="bi bi-code-slash"></i>
+                            </div>
+                        </div>
+
+                        <h4 class="card-title fw-bold text-dark mb-1">Carlos Brito</h4>
+                        <span class="badge bg-success mb-3">Desenvolvedor & Criador</span>
+                        <p class="card-text text-muted">
+                            Professor e desenvolvedor encarregado da arquitetura do sistema, engenharia do banco de dados e implementação das lógicas de reconhecimento de voz e algoritmos de acompanhamento pedagógico.
+                        </p>
+                    </div>
+                    <div class="card-footer bg-transparent border-0 text-center pb-4">
+                        <a href=" https://lattes.cnpq.br/3167381293602948" target="_blank" class="text-decoration-none"><i class="bi bi-file-earmark-text me-1"></i> Lattes</a>
+                        <a href="https://www.linkedin.com/in/carlos-alberto-brito-de-souza-873a58384/" target="_blank" class="text-decoration-none"><i class="bi bi-linkedin me-1"></i> Linkedin</a>
+                        <a href="https://www.instagram.com/dev_n_art?stkn=aG9wNmlsZ2t1YTZw" target="_blank" class="text-decoration-none"><i class="bi bi-instagram me-1"></i> Instagram</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Alessandra Jastes -->
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm hover-card">
+                    <div class="card-body text-center p-4">
+                        
+                        <!-- Avatar com Foto + Borda Azul + Ícone -->
+                        <div class="avatar-container mb-3">
+                            <img src="{% static 'img/alessandra.png' %}" alt="Alessandra Jastes" class="avatar-img">
+                            <div class="avatar-badge bg-warning text-dark">
+                                <i class="bi bi-journal-bookmark-fill"></i>
+                            </div>
+                        </div>
+
+                        <h4 class="card-title fw-bold text-dark mb-1">Alessandra Jastes</h4>
+                        <span class="badge bg-warning text-dark mb-3">Coautora & Colaboradora</span>
+                        <p class="card-text text-muted">
+                            Educadora e pesquisadora atuante no projeto, responsável pela curadoria pedagógica, validação das dinâmicas de leitura e apoio no alinhamento das metodologias aplicadas em sala de aula.
+                        </p>
+                    </div>
+                    <div class="card-footer bg-transparent border-0 text-center pb-4">
+                        <a href=" https://lattes.cnpq.br/" target="_blank" class="text-decoration-none"><i class="bi bi-file-earmark-text me-1"></i> Lattes</a>
+                        <a href="https://www.linkedin.com/in/alessandra-jastes-33b28169/" target="_blank" class="text-decoration-none"><i class="bi bi-linkedin me-1"></i> Linkedin</a>
+                        <a href="https://www.instagram.com/teacher_alejastes?stkn=MXVsbWxpMmFmeGozMQ%3D%3D&utm_source=qr" target="_blank" class="text-decoration-none"><i class="bi bi-instagram me-1"></i> Instagram</a>
+                    
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Card 3: Achilles Rianieri -->
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm hover-card">
+                    <div class="card-body text-center p-4">
+                        
+                        <!-- Avatar com Foto + Borda Azul + Ícone -->
+                        <div class="avatar-container mb-3">
+                            <img src="{% static 'img/Achilles_Rianieri.jpeg' %}" alt="Achilles Rianieri" class="avatar-img">
+                            <div class="avatar-badge bg-warning text-dark">
+                                <i class="bi bi-pc-display me-1"></i>
+                            </div>
+                        </div>
+
+                        <h4 class="card-title fw-bold text-dark mb-1">Achilles Rianieri</h4>
+                        <span class="badge bg-warning text-dark mb-3">Programador & TI</span>
+                        <p class="card-text text-muted">
+                            Profissional de TI com 8 anos de experiência em gestão de projetos, infraestrutura e operações de tecnologia, atuando na otimização de ambientes, recursos e processos para aumento da eficiência e geração de resultados. Experiência em redes, sistemas, operações de Call Center, gestão de equipes técnicas, KPIs e SLAs, com atuação em operações distribuídas em múltiplos sites e atendimento a grandes empresas de telecomunicações.
+                        </p>
+                    </div>
+                    <div class="card-footer bg-transparent border-0 text-center pb-4">
+                        <a href=" https://arvity.com.br/" target="_blank" class="text-decoration-none"><i class="bi bi-cpu me-1"></i>Arvity</a>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+        <divisibleby class="text-center mt-5">
+            <h2>Manual do Usuário: <a href="https://docs.google.com/document/d/1xmLIvi4BirGQjCTGFbhaqv71B8OsTw51Btzl8FJ5ldg/edit?usp=sharing" target="_blank" class="text-decoration-none"><i class="bi bi-file-earmark-text me-1"></i> Manual do Usuário</a></h2>
+    </divisibleby>
+        </div>
+{% endblock main %}
+
+{% block script %}
+    <!-- Scripts Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock script %}
