@@ -1,0 +1,6 @@
+-> Na produção, por favor, abra o agendador do Linux (crontab -e) e adicione a linha abaixo para manter exatamente o mesmo agendamento que eu tinha (todo domingo às 10h00) agendado para Backup de dados para mim e a Alessandra termos para mestrado.
+obs: Lembrando de trocar /caminho/do/projeto pelo diretório real onde o Palavreando está salvo no servidor
+
+0 10 * * 0 /caminho/do/projeto/core/bin/python /caminho/do/projeto/manage.py exportar_dados_semanais >> /var/log/palavreando_exportacao.log 2>&1
+
+
